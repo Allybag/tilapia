@@ -2,8 +2,6 @@
 #include <assert.h>
 #include <ctype.h>
 #include <fcntl.h>
-#include <linux/if.h>
-#include <linux/if_tun.h>
 #include <netdb.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -13,6 +11,22 @@
 #include <time.h>
 #include <unistd.h>
 #include <errno.h>
+
+#ifdef linux
+#include <linux/if.h>
+#include <linux/if_tun.h>
+#else
+struct ifreq
+{
+    int ifr_flags;
+    char ifr_name[1];
+};
+#define IFF_TAP 0
+#define IFF_NO_PI 0
+#define IFNAMSIZ 1
+#define TUNSETIFF 0
+#endif
+
 
 #define PROTO_ICMP 1
 #define PROTO_TCP 6
