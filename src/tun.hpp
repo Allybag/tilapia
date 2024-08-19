@@ -8,7 +8,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/ioctl.h>
-#include <time.h>
 #include <unistd.h>
 #include <errno.h>
 
@@ -16,30 +15,11 @@
 #include <linux/if.h>
 #include <linux/if_tun.h>
 #else
-struct ifreq
-{
-    int ifr_flags;
-    char ifr_name[1];
-};
-#define IFF_TAP 0
-#define IFF_NO_PI 0
-#define IFNAMSIZ 1
-#define TUNSETIFF 0
+#include <dummy.hpp>
 #endif
 
+#include <constants.hpp>
 
-#define PROTO_ICMP 1
-#define PROTO_TCP 6
-#define PROTO_UDP 17
-
-#define TCP_FIN 1
-#define TCP_SYN 2
-#define TCP_RST 4
-#define TCP_PSH 8
-#define TCP_ACK 16
-#define TCP_URG 32
-#define TCP_ECE 64
-#define TCP_CWR 128
 
 int tun_alloc(char *dev)
 {
@@ -71,9 +51,3 @@ int tun_alloc(char *dev)
     return fd;
 }
 
-int main()
-{
-    char dev_name[100];
-    tun_alloc(dev_name);
-    printf("Created tunel device: %s", dev_name);
-}
