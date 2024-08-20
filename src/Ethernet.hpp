@@ -81,24 +81,9 @@ auto fromWire(const char* buffer) -> HeaderT
     std::array<std::byte, sizeof(HeaderT)> bytes;
     std::memcpy(&bytes, buffer, sizeof(bytes));
 
-    std::println("Header: --------------------------------------------------");
-    for(const auto byte: bytes)
-    {
-        std::println("{:x} ", static_cast<int>(byte));
-    }
-    std::println("");
-
     byteswapMembers(bytes, LayoutInfo<HeaderT>::Sizes);
 
-
-    for(const auto byte: bytes)
-    {
-        std::println("{:x} ", static_cast<int>(byte));
-    }
-    std::println("");
-
-    auto header = std::bit_cast<HeaderT>(bytes);
-    return header;
+    return std::bit_cast<HeaderT>(bytes);
 }
 
 struct SimpleFormatter
