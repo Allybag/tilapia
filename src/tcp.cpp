@@ -1,6 +1,8 @@
 #include <tap.hpp>
 
 #include <bit>
+#include <iostream>
+#include <iomanip>
 #include <print>
 
 int main()
@@ -21,17 +23,19 @@ int main()
     TapDevice tap{};
     std::println("Created tap device {} : descriptor {}", tap.name(), tap.descriptor());
 
-    int messagesRemaining{1};
+    int messagesRemaining{100};
 
     char buffer[2000];
     while (messagesRemaining)
     {
-        if (read(tap.descriptor(), buffer, sizeof(buffer)) < 0)
+        int bytesRead = read(tap.descriptor(), buffer, sizeof(buffer));
+        if (bytesRead < 0)
         {
-            std::print("Failed to read from Tap Device");
+            std::println("Failed to read from Tap Device");
         }
 
         messagesRemaining -= 1;
-        std::print("Received a message of size {}", strlen(buffer));
+        std::println("Received a message of size {}", bytesRead);
+        std::cout << std::flush;
     }
 }
