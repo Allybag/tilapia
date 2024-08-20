@@ -8,18 +8,16 @@
 
 int main()
 {
-    if constexpr (std::endian::native == std::endian::big)
-    {
-        std::println("Host is big endian");
-    }
-    else if constexpr (std::endian::native == std::endian::little)
+    if constexpr (std::endian::native == std::endian::little)
     {
         std::println("Host is little endian");
     }
     else
     {
-        std::println("Host is mixed endian");
+        std::println("Host is not little endian, disaster!");
+        return 1;
     }
+
 
     TapDevice tap{};
     std::println("Created tap device {} : descriptor {}", tap.name(), tap.descriptor());
@@ -43,7 +41,7 @@ int main()
         auto ethernetHeader = fromWire<EthernetHeader>(buffer);
 
         messagesRemaining -= 1;
-        std::println("Received a message of size {}, type ", bytesRead, ethernetHeader.mEthertype);
+        std::println("Received a message of size {}, type {:x}", bytesRead, ethernetHeader.mEthertype);
         std::cout << std::flush;
     }
 }

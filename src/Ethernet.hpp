@@ -4,6 +4,7 @@
 #include <bit>
 #include <cstdint>
 #include <cstring>
+#include <print>
 #include <ranges>
 #include <span>
 
@@ -15,29 +16,42 @@ struct EthernetHeader
 };
 static_assert(sizeof(EthernetHeader) == 14, "Ethernet header must be 14 bytes long");
 
+template <std::size_t... Sizes>
+constexpr std::size_t totalSize(std::index_sequence<Sizes...> sizes)
+{
+    if constexpr (sizes.size() == 0)
+    {
+        return 0;
+    }
+    else
+    {
+        return (Sizes + ...);
+    }
+}
+
 template <typename HeaderT>
 struct LayoutInfo
 {
     static constexpr std::index_sequence<> Sizes{};
+
+    static_assert(totalSize(Sizes) == sizeof(HeaderT));
 };
 
 template <>
-struct LayoutInfo<EthernetHeader> 
+struct LayoutInfo<EthernetHeader>
 {
     static constexpr std::index_sequence<6, 6, 2> Sizes{};
 };
 
 template <std::size_t ArraySize, std::size_t MemberSize>
-void byteswapMember(std::array<std::byte, ArraySize> bytes, std::size_t& offset)
+void byteswapMember(std::array<std::byte, ArraySize>& bytes, std::size_t& offset)
 {
-    std::array<std::byte, MemberSize> memberBytes;
-    std::memcpy(&memberBytes, &bytes + offset, sizeof(memberBytes)); 
-    std::ranges::reverse(memberBytes);
+    std::ranges::reverse(bytes.begin() + offset, bytes.begin() + offset + MemberSize);
     offset += MemberSize;
 }
 
 template <std::size_t ArraySize, std::size_t... MemberSizes>
-void byteswapMembers(std::array<std::byte, ArraySize> bytes, std::index_sequence<MemberSizes...>)
+void byteswapMembers(std::array<std::byte, ArraySize>& bytes, std::index_sequence<MemberSizes...>)
 {
     std::size_t offset{0};
     (byteswapMember<ArraySize, MemberSizes>(bytes, offset), ...);
@@ -52,12 +66,25 @@ auto fromWire(const char* buffer) -> HeaderT
     }
 
     std::array<std::byte, sizeof(HeaderT)> bytes;
-    std::memcpy(&bytes, buffer, sizeof(bytes)); 
+    std::memcpy(&bytes, buffer, sizeof(bytes));
 
-    byteswapMembers(bytes, LayoutInfo<HeaderT>::Sizes); 
+    std::println("Header: --------------------------------------------------");
+    for(const auto byte: bytes)
+    {
+        std::println("{:x} ", static_cast<int>(byte));
+    }
+    std::println("");
 
-    HeaderT header{};
-    std::memcpy(&header, &bytes, sizeof(header)); 
+    byteswapMembers(bytes, LayoutInfo<HeaderT>::Sizes);
+
+
+    for(const auto byte: bytes)
+    {
+        std::println("{:x} ", static_cast<int>(byte));
+    }
+    std::println("");
+
+    auto header = std::bit_cast<HeaderT>(bytes);
     return header;
 }
 
