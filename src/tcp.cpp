@@ -1,9 +1,23 @@
 #include <tap.hpp>
 
+#include <bit>
 #include <print>
 
 int main()
 {
+    if constexpr (std::endian::native == std::endian::big)
+    {
+        std::println("Host is big endian");
+    }
+    else if constexpr (std::endian::native == std::endian::little)
+    {
+        std::println("Host is little endian");
+    }
+    else
+    {
+        std::println("Host is mixed endian");
+    }
+
     TapDevice tap{};
     std::println("Created tap device {} : descriptor {}", tap.name(), tap.descriptor());
 
