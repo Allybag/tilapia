@@ -41,7 +41,7 @@ int main()
         auto ethernetHeader = fromWire<EthernetHeader>(buffer);
 
         messagesRemaining -= 1;
-        std::print("Received a message of size {}, Ethernet Header: {}", bytesRead, ethernetHeader);
+        std::println("Received a message of size {}, Ethernet Header: {}", bytesRead, ethernetHeader);
         std::cout << std::flush;
     }
 }
