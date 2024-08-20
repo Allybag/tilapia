@@ -1,4 +1,5 @@
 #include <tap.hpp>
+#include <Ethernet.hpp>
 
 #include <bit>
 #include <iostream>
@@ -34,8 +35,15 @@ int main()
             std::println("Failed to read from Tap Device");
         }
 
+        if (bytesRead < sizeof(EthernetHeader))
+        {
+            std::println("Received dodgy message of size {}", bytesRead);
+        }
+
+        auto ethernetHeader = fromWire<EthernetHeader>(buffer);
+
         messagesRemaining -= 1;
-        std::println("Received a message of size {}", bytesRead);
+        std::println("Received a message of size {}, type ", bytesRead, ethernetHeader.mEthertype);
         std::cout << std::flush;
     }
 }
