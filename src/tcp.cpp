@@ -61,6 +61,14 @@ int main()
                 auto arpHeader = fromWire<ArpHeader>(buffer + offset);
                 offset += sizeof(arpHeader);
                 std::println("ARP Packet of protocol {:X}, type {}", arpHeader.mProtocolType, arpHeader.mOpCode);
+                if (arpHeader.mProtocolType != 0x800)
+                {
+                    continue;
+                }
+
+                auto arpIpBody = fromWire<ArpIpBody>(buffer + offset);
+                offset += sizeof(arpIpBody);
+                std::println("{}", arpIpBody);
             }
             default:
                 break;

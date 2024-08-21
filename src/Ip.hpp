@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Headers.hpp>
+#include <Types.hpp>
 
 #include <cstddef>
 #include <cstdint>
@@ -30,8 +31,8 @@ struct IpV4Header
     std::uint8_t mTimeToLive;
     std::uint8_t mProto;
     std::uint16_t mCheckSum;
-    std::uint32_t mSourceAddress;
-    std::uint32_t mDestinationAddress;
+    IpAddress mSourceAddress;
+    IpAddress mDestinationAddress;
 };
 static_assert(sizeof(IpV4Header) == 20, "IP header must be 20 bytes long");
 

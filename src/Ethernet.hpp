@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Headers.hpp>
+#include <Types.hpp>
 
 #include <cstdint>
 #include <cstring>
@@ -16,11 +17,6 @@ enum class EtherType : std::uint16_t
     InternetProtocolVersion6 = 0x86DD,
 };
 
-struct MacAddress
-{
-    char mValue[6];
-};
-
 struct EthernetHeader
 {
     MacAddress mDestinationMacAddress;
@@ -33,14 +29,6 @@ template <>
 struct LayoutInfo<EthernetHeader>
 {
     static constexpr std::index_sequence<6, 6, 2> Sizes{};
-};
-
-struct SimpleFormatter
-{
-    constexpr auto parse(std::format_parse_context& ctx)
-    {
-        return ctx.begin();
-    }
 };
 
 template <> struct std::formatter<EtherType> : SimpleFormatter
@@ -62,16 +50,6 @@ template <> struct std::formatter<EtherType> : SimpleFormatter
         default:
             throw std::runtime_error{std::format("Unexpected ethertype: {}", std::to_underlying(etherType))};
         }
-    }
-};
-
-template <> struct std::formatter<MacAddress> : SimpleFormatter
-{
-    template <typename FormatContext>
-    auto format(const MacAddress& address, FormatContext& ctx) const
-    {
-        return std::format_to(ctx.out(), "{:02X}-{:02X}-{:02X}-{:02X}-{:02X}-{:02X}", address.mValue[0], address.mValue[1],
-        address.mValue[2], address.mValue[3], address.mValue[4], address.mValue[5]);
     }
 };
 
