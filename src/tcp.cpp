@@ -1,6 +1,7 @@
 #include <tap.hpp>
 #include <Ethernet.hpp>
 #include <Ip.hpp>
+#include <Arp.hpp>
 
 #include <bit>
 #include <iostream>
@@ -45,14 +46,27 @@ int main()
         offset += sizeof(ethernetHeader);
 
         std::println("Received a message of size {}, Ethernet Header: {}", bytesRead, ethernetHeader);
-        if (ethernetHeader.mEthertype != EtherType::InternetProtocolVersion4)
+        switch(ethernetHeader.mEthertype)
         {
-            continue;
+            case EtherType::InternetProtocolVersion4:
+            {
+                auto ipHeader = fromWire<IpV4Header>(buffer + offset);
+                offset += sizeof(ipHeader);
+                std::println("IP Packet of version {}, header length {}, protocol {}, total length {}", int{ipHeader.mVersionLength.mVersion}, 
+                int{ipHeader.mVersionLength.mLength}, ipHeader.mProto, ipHeader.mTotalLength);
+                break;
+            }
+            case EtherType::AddressResolutionProtocol:
+            {
+                auto arpHeader = fromWire<ArpHeader>(buffer + offset);
+                offset += sizeof(arpHeader);
+                std::println("ARP Packet of protocol {:X}, type {}", arpHeader.mProtocolType, arpHeader.mOpCode);
+            }
+            default:
+                break;
+
         }
 
-        auto ipHeader = fromWire<IpV4Header>(buffer + offset);
-        std::println("IP Packet of version {}, header length {}, protocol {}, total length {}", int{ipHeader.mVersionLength.mVersion}, 
-        int{ipHeader.mVersionLength.mLength}, ipHeader.mProto, ipHeader.mTotalLength);
 
         std::cout << std::flush;
     }
