@@ -20,8 +20,8 @@ template <> struct std::formatter<MacAddress> : SimpleFormatter
     template <typename FormatContext>
     auto format(const MacAddress& address, FormatContext& ctx) const
     {
-        return std::format_to(ctx.out(), "{:02X}-{:02X}-{:02X}-{:02X}-{:02X}-{:02X}", address.mValue[0], address.mValue[1],
-        address.mValue[2], address.mValue[3], address.mValue[4], address.mValue[5]);
+        return std::format_to(ctx.out(), "{:02X}-{:02X}-{:02X}-{:02X}-{:02X}-{:02X}", address.mValue[5], address.mValue[4],
+        address.mValue[3], address.mValue[2], address.mValue[1], address.mValue[0]);
     }
 };
 
@@ -35,7 +35,7 @@ template <> struct std::formatter<IpAddress> : SimpleFormatter
     template <typename FormatContext>
     auto format(const IpAddress& address, FormatContext& ctx) const
     {
-        return std::format_to(ctx.out(), "{}.{}.{}.{}", address.mValue[0], address.mValue[1],
-        address.mValue[2], address.mValue[3]);
+        return std::format_to(ctx.out(), "{:d}.{:d}.{:d}.{:d}", address.mValue[3], address.mValue[2],
+        address.mValue[1], address.mValue[0]);
     }
 };

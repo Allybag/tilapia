@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cstddef>
 #include <cstring>
+#include <print>
 #include <stdexcept>
 #include <utility>
 
@@ -53,7 +54,28 @@ auto fromWire(const char* buffer) -> HeaderT
     std::array<std::byte, sizeof(HeaderT)> bytes;
     std::memcpy(&bytes, buffer, sizeof(bytes));
 
+    if ((true))
+    {
+        std::println("Header: --------------------------------------------------");
+        for(const auto byte: bytes)
+        {
+            std::println("{:x} ", static_cast<int>(byte));
+        }
+        std::println("");
+    }
+
     byteswapMembers(bytes, LayoutInfo<HeaderT>::Sizes);
+
+    if ((true))
+    {
+        std::println("Swapped: -------------------------------------------------");
+        for (const auto byte: bytes)
+        {
+            std::println("{:x} ", static_cast<int>(byte));
+        }
+        std::println("");
+        std::println("Header: --------------------------------------------------");
+    }
 
     return std::bit_cast<HeaderT>(bytes);
 }
