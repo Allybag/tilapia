@@ -52,16 +52,15 @@ int main()
             {
                 auto ipHeader = fromWire<IpV4Header>(buffer + offset);
                 offset += sizeof(ipHeader);
-                std::println("IP Packet of version {}, header length {}, protocol {}, total length {}", int{ipHeader.mVersionLength.mVersion}, 
-                int{ipHeader.mVersionLength.mLength}, ipHeader.mProto, ipHeader.mTotalLength);
+                std::println("{}", ipHeader);
                 break;
             }
             case EtherType::AddressResolutionProtocol:
             {
                 auto arpHeader = fromWire<ArpHeader>(buffer + offset);
                 offset += sizeof(arpHeader);
-                std::println("ARP Packet of protocol {:X}, type {}", arpHeader.mProtocolType, arpHeader.mOpCode);
-                if (arpHeader.mProtocolType != 0x800)
+                std::println("{}", arpHeader);
+                if (arpHeader.mProtocolType != ArpProtoType::InternetProtocolVersion4)
                 {
                     continue;
                 }

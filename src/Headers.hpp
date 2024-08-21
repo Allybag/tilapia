@@ -54,7 +54,7 @@ auto fromWire(const char* buffer) -> HeaderT
     std::array<std::byte, sizeof(HeaderT)> bytes;
     std::memcpy(&bytes, buffer, sizeof(bytes));
 
-    if ((true))
+    if ((false))
     {
         std::println("Header: --------------------------------------------------");
         for(const auto byte: bytes)
@@ -66,7 +66,7 @@ auto fromWire(const char* buffer) -> HeaderT
 
     byteswapMembers(bytes, LayoutInfo<HeaderT>::Sizes);
 
-    if ((true))
+    if ((false))
     {
         std::println("Swapped: -------------------------------------------------");
         for (const auto byte: bytes)

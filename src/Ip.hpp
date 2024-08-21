@@ -42,3 +42,11 @@ struct LayoutInfo<IpV4Header>
     static constexpr std::index_sequence<1, 1, 2, 2, 2, 1, 1, 2, 4, 4> Sizes{};
 };
 
+template <> struct std::formatter<IpV4Header> : SimpleFormatter
+{
+    template <typename FormatContext>
+    auto format(const IpV4Header& header, FormatContext& ctx) const
+    {
+        return std::format_to(ctx.out(), "IP Header of size {}: {} -> {}", header.mTotalLength, header.mSourceAddress, header.mDestinationAddress);
+    }
+};
