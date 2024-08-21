@@ -20,9 +20,11 @@ int main()
         return 1;
     }
 
-
     TapDevice tap{};
     std::println("Created tap device {} : descriptor {}", tap.name(), tap.descriptor());
+
+    ArpNode arpNode{IpAddress{10, 3, 3, 3}};
+    std::println("Created Arp Node, IP: {}", arpNode.address());
 
     int messagesRemaining{100};
 
@@ -68,12 +70,17 @@ int main()
                 auto arpIpBody = fromWire<ArpIpBody>(buffer + offset);
                 offset += sizeof(arpIpBody);
                 std::println("{}", arpIpBody);
+
+                auto arpResponse = arpNode.onMessage({arpHeader, arpIpBody});
+                if (arpResponse.has_value())
+                {
+                    std::println("Arp Response: Header {}, Body {}", arpResponse->mHeader, arpResponse->mBody);
+                }
             }
             default:
                 break;
 
         }
-
 
         std::cout << std::flush;
     }

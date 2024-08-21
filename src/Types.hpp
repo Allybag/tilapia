@@ -44,7 +44,9 @@ template <> struct std::formatter<EtherType> : SimpleFormatter
 
 struct MacAddress
 {
-    char mValue[6];
+    std::uint8_t mValue[6];
+
+    bool operator==(const MacAddress&) const = default;
 };
 
 template <> struct std::formatter<MacAddress> : SimpleFormatter
@@ -59,7 +61,9 @@ template <> struct std::formatter<MacAddress> : SimpleFormatter
 
 struct IpAddress
 {
-    char mValue[4];
+    std::uint8_t mValue[4];
+
+    bool operator==(const IpAddress&) const = default;
 };
 
 template <> struct std::formatter<IpAddress> : SimpleFormatter

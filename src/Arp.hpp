@@ -5,8 +5,10 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <unordered_map>
 
 using ArpProtoType = EtherType; // These are a subset apparently
+static inline constexpr MacAddress ArpBroadcastAddress{ 0xff, 0xff, 0xff, 0xff, 0xff, 0xff };
 
 enum class ArpHardwareType : std::uint16_t
 {
@@ -102,3 +104,96 @@ template <> struct std::formatter<ArpIpBody> : SimpleFormatter
             body.mSourceMacAddress, body.mDestinationMacAddress, body.mSourceIp, body.mDestinationIp);
     }
 };
+
+struct ArpMessage
+{
+    ArpHeader mHeader;
+    ArpIpBody mBody;
+};
+
+using ArpKey = std::pair<ArpProtoType, IpAddress>;
+
+namespace detail
+{
+
+inline void hash_combine(std::size_t&)
+{
+}
+
+template <typename T, typename... Rest> inline void hash_combine(std::size_t& seed, const T& v, Rest... rest)
+{
+    std::hash<T> hasher;
+    seed ^= hasher(v) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+    hash_combine(seed, rest...);
+}
+} // namespace detail
+
+template <typename... Rest> inline std::size_t hash_combine(Rest... rest)
+{
+    std::size_t hash{0};
+    detail::hash_combine(hash, rest...);
+    return hash;
+}
+
+namespace std
+{
+template <> struct hash<ArpProtoType>
+{
+    size_t operator()(const ArpProtoType& value) const
+    {
+        return std::hash<std::uint8_t>{}(std::to_underlying(value));
+    }
+};
+
+template <> struct hash<IpAddress>
+{
+    size_t operator()(const IpAddress& value) const
+    {
+        return std::hash<std::uint32_t>{}(std::bit_cast<std::uint32_t>(value));
+    }
+};
+
+template <> struct hash<ArpKey>
+{
+    size_t operator()(const ArpKey& arpKey) const
+    {
+        return hash_combine(arpKey.first, arpKey.second);
+    }
+};
+}
+// ARP allows us to translate from a protocol specific address like IP
+// to an actual hardware MAC address
+// We will only implement IP
+class ArpNode
+{
+public:
+    explicit ArpNode(IpAddress ip) : mIp{ip} { }
+
+    std::optional<ArpMessage> onMessage(const ArpMessage& message)
+    {
+        auto key = ArpKey{message.mHeader.mProtocolType, message.mBody.mSourceIp};
+        mTranslationTable[key] = message.mBody.mSourceMacAddress;
+
+        if (message.mBody.mDestinationIp != mIp && message.mHeader.mOpCode != ArpOpCode::Request)
+        {
+            return std::nullopt;
+        }
+
+        ArpMessage result{message};
+        result.mHeader.mOpCode = ArpOpCode::Reply;
+        std::swap(result.mBody.mDestinationMacAddress, result.mBody.mSourceMacAddress);
+        std::swap(result.mBody.mDestinationIp, result.mBody.mSourceIp);
+        return result;
+    }
+
+    IpAddress address() const
+    {
+        return mIp;
+    }
+
+private:
+    IpAddress mIp{};
+    std::unordered_map<ArpKey, MacAddress> mTranslationTable{};
+};
+
+
