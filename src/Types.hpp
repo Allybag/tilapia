@@ -50,6 +50,17 @@ struct MacAddress
     bool operator==(const MacAddress&) const = default;
 };
 
+inline MacAddress fromSextets(std::array<int, sizeof(MacAddress)> sextets)
+{
+    MacAddress result{};
+    for (auto i = 0; i < sizeof(MacAddress); i++)
+    {
+        result.mValue[sizeof(MacAddress) - i - 1] = static_cast<std::uint8_t>(sextets[i]);
+    }
+
+    return result;
+}
+
 template <> struct std::formatter<MacAddress> : SimpleFormatter
 {
     template <typename FormatContext>

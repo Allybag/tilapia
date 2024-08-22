@@ -167,21 +167,22 @@ template <> struct hash<ArpKey>
 class ArpNode
 {
 public:
-    explicit ArpNode(IpAddress ip) : mIp{ip} { }
+    ArpNode(IpAddress ip, MacAddress mac) : mIp{ip}, mMac{mac} { }
 
     std::optional<ArpMessage> onMessage(const ArpMessage& message)
     {
         auto key = ArpKey{message.mHeader.mProtocolType, message.mBody.mSourceIp};
         mTranslationTable[key] = message.mBody.mSourceMacAddress;
 
-        if (message.mBody.mDestinationIp != mIp && message.mHeader.mOpCode != ArpOpCode::Request)
+        if (message.mBody.mDestinationIp != mIp || message.mHeader.mOpCode != ArpOpCode::Request)
         {
             return std::nullopt;
         }
 
         ArpMessage result{message};
         result.mHeader.mOpCode = ArpOpCode::Reply;
-        std::swap(result.mBody.mDestinationMacAddress, result.mBody.mSourceMacAddress);
+        result.mBody.mDestinationMacAddress = result.mBody.mSourceMacAddress;
+        result.mBody.mSourceMacAddress = mMac;
         std::swap(result.mBody.mDestinationIp, result.mBody.mSourceIp);
         return result;
     }
@@ -193,6 +194,7 @@ public:
 
 private:
     IpAddress mIp{};
+    MacAddress mMac{};
     std::unordered_map<ArpKey, MacAddress> mTranslationTable{};
 };
 

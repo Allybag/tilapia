@@ -23,7 +23,11 @@ int main()
     TapDevice tap{};
     std::println("Created tap device {} : descriptor {}", tap.name(), tap.descriptor());
 
-    ArpNode arpNode{fromQuartets({10, 3, 3, 3})};
+    // We do not set these yet, except for with ip command line tool
+    // TODO: Bring interface up, set mac address
+    IpAddress ip{fromQuartets({10, 3, 3, 3})};
+    MacAddress mac{fromSextets({0xaa, 0xbb, 0xbb, 0x0, 0x0, 0xdd})};
+    ArpNode arpNode{ip, mac};
     std::println("Created Arp Node, IP: {}", arpNode.address());
 
     int messagesRemaining{100};
