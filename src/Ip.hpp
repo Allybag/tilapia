@@ -5,6 +5,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <bit>
 
 struct VersionLength
 {
@@ -56,11 +57,13 @@ inline std::uint16_t checksum(const IpV4Header& ip)
     std::uint16_t result{};
 
     static constexpr auto cWordsInIp = sizeof(ip) / sizeof(std::uint16_t);
+    static_assert(cWordsInIp == 10);
     const auto words = std::bit_cast<std::array<const std::uint16_t, cWordsInIp>>(ip);
 
     for (const auto word : words)
     {
-        std::uint32_t sum = result + word;
+        auto num = std::byteswap(word);
+        std::uint32_t sum = result + num;
         result = (sum & 0xFFFF) + (sum >> 16);
     }
 
