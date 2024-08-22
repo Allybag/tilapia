@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <format>
 
 struct SimpleFormatter
@@ -65,6 +66,17 @@ struct IpAddress
 
     bool operator==(const IpAddress&) const = default;
 };
+
+inline IpAddress fromQuartets(std::array<int, sizeof(IpAddress)> quartets)
+{
+    IpAddress result{};
+    for (auto i = 0; i < sizeof(IpAddress); i++)
+    {
+        result.mValue[sizeof(IpAddress) - i - 1] = static_cast<std::uint8_t>(quartets[i]);
+    }
+
+    return result;
+}
 
 template <> struct std::formatter<IpAddress> : SimpleFormatter
 {

@@ -54,29 +54,23 @@ auto fromWire(const char* buffer) -> HeaderT
     std::array<std::byte, sizeof(HeaderT)> bytes;
     std::memcpy(&bytes, buffer, sizeof(bytes));
 
-    if ((false))
-    {
-        std::println("Header: --------------------------------------------------");
-        for(const auto byte: bytes)
-        {
-            std::println("{:x} ", static_cast<int>(byte));
-        }
-        std::println("");
-    }
-
     byteswapMembers(bytes, LayoutInfo<HeaderT>::Sizes);
-
-    if ((false))
-    {
-        std::println("Swapped: -------------------------------------------------");
-        for (const auto byte: bytes)
-        {
-            std::println("{:x} ", static_cast<int>(byte));
-        }
-        std::println("");
-        std::println("Header: --------------------------------------------------");
-    }
 
     return std::bit_cast<HeaderT>(bytes);
 }
 
+template <typename HeaderT>
+void toWire(const HeaderT& header, char* buffer)
+{
+    if constexpr (LayoutInfo<HeaderT>::Sizes.size() == 0)
+    {
+        throw std::runtime_error{"No layout info for requested type"};
+    }
+
+    std::array<std::byte, sizeof(HeaderT)> bytes;
+    std::memcpy(&bytes, &header, sizeof(bytes));
+
+    byteswapMembers(bytes, LayoutInfo<HeaderT>::Sizes);
+
+    std::memcpy(buffer, &bytes, sizeof(bytes));
+}
