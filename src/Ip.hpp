@@ -50,3 +50,19 @@ template <> struct std::formatter<IpV4Header> : SimpleFormatter
         return std::format_to(ctx.out(), "IP Header of size {}: {} -> {}", header.mTotalLength, header.mSourceAddress, header.mDestinationAddress);
     }
 };
+
+inline std::uint16_t checksum(const IpV4Header& ip)
+{
+    std::uint16_t result{};
+
+    static constexpr auto cWordsInIp = sizeof(ip) / sizeof(std::uint16_t);
+    const auto words = std::bit_cast<std::array<const std::uint16_t, cWordsInIp>>(ip);
+
+    for (const auto word : words)
+    {
+        std::uint32_t sum = result + word;
+        result = (sum & 0xFFFF) + (sum >> 16);
+    }
+
+    return ~result;
+}

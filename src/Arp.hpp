@@ -164,6 +164,10 @@ template <> struct hash<ArpKey>
 // ARP allows us to translate from a protocol specific address like IP
 // to an actual hardware MAC address
 // We will only implement IP
+// ARP seems to be a completely trust based protocol,
+// so many distributions will ignore random ARP messages
+// If your ARP table does not get updated, try running
+// sysctl -w net.ipv4.conf.all.arp_accept=1
 class ArpNode
 {
 public:
