@@ -60,7 +60,7 @@ int main()
             {
                 auto ipHeader = fromWire<IpV4Header>(readBuffer + readOffset);
                 readOffset += sizeof(ipHeader);
-                std::println("Checksum {}: {}", checksum(ipHeader), ipHeader);
+                std::println("{}, checksum 0x{:x}", ipHeader, checksum(ipHeader));
                 break;
             }
             case EtherType::AddressResolutionProtocol:

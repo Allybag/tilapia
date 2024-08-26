@@ -7,6 +7,14 @@
 #include <cstdint>
 #include <bit>
 
+enum class IPProtocol : std::uint8_t
+{
+    ICMP = 1, // Intenet Control Message Protocol
+    IGMP = 2, // Internet Group Management Protocol
+    TCP = 6,  // Transmission Control Protocol
+    UDP = 17, // User Datagram Protocol
+};
+
 struct VersionLength
 {
     // These are defined as version then length,
@@ -30,7 +38,7 @@ struct IpV4Header
     std::uint16_t mId; // A counter for reassembling IP datagrams
     FlagsOffset mFlagsOffset;
     std::uint8_t mTimeToLive;
-    std::uint8_t mProto;
+    IPProtocol mProto;
     std::uint16_t mCheckSum;
     IpAddress mSourceAddress;
     IpAddress mDestinationAddress;
@@ -43,12 +51,36 @@ struct LayoutInfo<IpV4Header>
     static constexpr std::index_sequence<1, 1, 2, 2, 2, 1, 1, 2, 4, 4> Sizes{};
 };
 
+template <> struct std::formatter<IPProtocol> : SimpleFormatter
+{
+    template <typename FormatContext>
+    auto format(const IPProtocol& ipProto, FormatContext& ctx) const
+    {
+        using enum IPProtocol;
+        switch (ipProto)
+        {
+        case IPProtocol::ICMP:
+            return std::format_to(ctx.out(), "ICMP");
+        case IPProtocol::IGMP:
+            return std::format_to(ctx.out(), "IGMP");
+        case IPProtocol::TCP:
+            return std::format_to(ctx.out(), "TCP");
+        case IPProtocol::UDP:
+            return std::format_to(ctx.out(), "UDP");
+        default:
+            throw std::runtime_error{std::format("Unexpected IP Protocol Type: {}", std::to_underlying(ipProto))};
+        }
+    }
+};
+
+
 template <> struct std::formatter<IpV4Header> : SimpleFormatter
 {
     template <typename FormatContext>
     auto format(const IpV4Header& header, FormatContext& ctx) const
     {
-        return std::format_to(ctx.out(), "IP Header of size {}: {} -> {}", header.mTotalLength, header.mSourceAddress, header.mDestinationAddress);
+        return std::format_to(ctx.out(), "IP Header of type {}, size {}: {} -> {}",
+            header.mProto, header.mTotalLength, header.mSourceAddress, header.mDestinationAddress);
     }
 };
 
