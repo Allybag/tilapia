@@ -29,6 +29,7 @@ struct IcmpV4Header
         return mCheckSum;
     }
 };
+static_assert(sizeof(IcmpV4Header) == 4, "ICMP header must be 4 bytes long");
 
 template <>
 struct LayoutInfo<IcmpV4Header>
@@ -40,13 +41,15 @@ struct IcmpV4Echo
 {
     std::uint16_t mId;
     std::uint16_t mSeq;
-    std::uint32_t mPayload;
-};
+    std::uint64_t mData;
+    std::uint8_t mPayload[48];
+} __attribute__((packed));
+static_assert(sizeof(IcmpV4Echo) == 60, "ICMP Echo must be 60 bytes long");
 
 template <>
 struct LayoutInfo<IcmpV4Echo>
 {
-    static constexpr std::index_sequence<2, 2, 4> Sizes{};
+    static constexpr std::index_sequence<2, 2, 8, 48> Sizes{};
 };
 
 struct IcmpV4EchoResponse
@@ -68,7 +71,7 @@ struct IcmpV4EchoResponse
 template <>
 struct LayoutInfo<IcmpV4EchoResponse>
 {
-    static constexpr std::index_sequence<1, 1, 2, 2, 2, 4> Sizes{};
+    static constexpr std::index_sequence<1, 1, 2, 2, 2, 8, 48> Sizes{};
 };
 
 template <> struct std::formatter<IcmpType> : SimpleFormatter
