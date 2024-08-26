@@ -54,18 +54,31 @@ template <> struct std::formatter<IpV4Header> : SimpleFormatter
 
 inline std::uint16_t checksum(const IpV4Header& ip)
 {
-    std::uint16_t result{};
+    // First we remove the checksum
+    auto ip_no_checksum{ip};
+    ip_no_checksum.mCheckSum = 0x0;
 
+    // Then we convert back to network byte order
+    std::array<std::byte, sizeof(IpV4Header)> bytes;
+    std::memcpy(&bytes, &ip_no_checksum, sizeof(ip));
+    byteswapMembers(bytes, LayoutInfo<IpV4Header>::Sizes);
+
+    // Then convert to an array of 16 bit words
     static constexpr auto cWordsInIp = sizeof(ip) / sizeof(std::uint16_t);
     static_assert(cWordsInIp == 10);
-    const auto words = std::bit_cast<std::array<const std::uint16_t, cWordsInIp>>(ip);
+    const auto words = std::bit_cast<std::array<const std::uint16_t, cWordsInIp>>(bytes);
 
+    // Then we do a cumulative one's complement 16 bit sum over each word
+    std::uint16_t result{};
     for (const auto word : words)
     {
-        auto num = std::byteswap(word);
-        std::uint32_t sum = result + num;
+        std::uint32_t sum = result + word;
         result = (sum & 0xFFFF) + (sum >> 16);
     }
 
-    return ~result;
+    // Then we negate and then byteswap the result back into host byte order
+    result = ~result;
+    result = std::byteswap(result);
+    std::println("Result: 0x{:x}, checksum: 0x{:x}", result, ip.mCheckSum);
+    return result;
 }
