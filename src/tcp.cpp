@@ -1,6 +1,7 @@
 #include <tap.hpp>
 #include <Ethernet.hpp>
 #include <Ip.hpp>
+#include <Icmp.hpp>
 #include <Arp.hpp>
 
 #include <bit>
@@ -61,6 +62,30 @@ int main()
                 auto ipHeader = fromWire<IpV4Header>(readBuffer + readOffset);
                 readOffset += sizeof(ipHeader);
                 std::println("{}, checksum 0x{:x}", ipHeader, checksum(ipHeader));
+                std::size_t myHeaderLen{ipHeader.mVersionLength.mLength};
+                if (myHeaderLen != 5)
+                {
+                    std::println("Received an IP Header of length {}", myHeaderLen);
+                    break;
+                }
+                switch(ipHeader.mProto)
+                {
+                    case IPProtocol::ICMP:
+                    {
+                        auto icmpHeader = fromWire<IcmpV4Header>(readBuffer + readOffset);
+                        readOffset += sizeof(icmpHeader);
+                        std::println("{}", icmpHeader);
+                        if (icmpHeader.mType == IcmpType::EchoRequest)
+                        {
+                            auto icmpEcho = fromWire<IcmpV4Echo>(readBuffer + readOffset);
+                            readOffset += sizeof(icmpEcho);
+                            std::println("{}", icmpEcho);
+                        }
+                        break;
+                    }
+                    default:
+                        break;
+                }
                 break;
             }
             case EtherType::AddressResolutionProtocol:
@@ -95,7 +120,6 @@ int main()
             }
             default:
                 break;
-
         }
 
         if (writeOffset != 0)
