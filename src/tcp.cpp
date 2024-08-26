@@ -75,12 +75,32 @@ int main()
                         auto icmpHeader = fromWire<IcmpV4Header>(readBuffer + readOffset);
                         readOffset += sizeof(icmpHeader);
                         std::println("{}", icmpHeader);
-                        if (icmpHeader.mType == IcmpType::EchoRequest)
+                        if (icmpHeader.mType != IcmpType::EchoRequest)
                         {
-                            auto icmpEcho = fromWire<IcmpV4Echo>(readBuffer + readOffset);
-                            readOffset += sizeof(icmpEcho);
-                            std::println("{}", icmpEcho);
+                            break;
                         }
+
+                        auto icmpEcho = fromWire<IcmpV4Echo>(readBuffer + readOffset);
+                        readOffset += sizeof(icmpEcho);
+                        std::println("{}", icmpEcho);
+
+                        IcmpV4EchoResponse response{icmpHeader, icmpEcho};
+                        response.mHeader.mType = IcmpType::EchoReply;
+                        response.mHeader.mCheckSum = checksum(response);
+
+                        auto ipResponseHeader{ipHeader};
+                        std::swap(ipResponseHeader.mSourceAddress, ipResponseHeader.mDestinationAddress);
+                        ipResponseHeader.mCheckSum = checksum(ipResponseHeader); 
+
+                        auto ethernetResponseHeader{ethernetHeader};
+                        std::swap(ethernetResponseHeader.mSourceMacAddress, ethernetResponseHeader.mDestinationMacAddress);
+
+                        toWire(ethernetResponseHeader, writeBuffer + writeOffset);
+                        writeOffset += sizeof(ethernetResponseHeader);
+                        toWire(ipResponseHeader, writeBuffer + writeOffset);
+                        writeOffset += sizeof(ipResponseHeader);
+                        toWire(response, writeBuffer + writeOffset);
+                        writeOffset += sizeof(response);
                         break;
                     }
                     default:

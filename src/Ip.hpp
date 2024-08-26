@@ -42,6 +42,16 @@ struct IpV4Header
     std::uint16_t mCheckSum;
     IpAddress mSourceAddress;
     IpAddress mDestinationAddress;
+
+    void zero_out_checksum()
+    {
+        mCheckSum = 0;
+    }
+
+    auto checksum() const
+    {
+        return mCheckSum;
+    }
 };
 static_assert(sizeof(IpV4Header) == 20, "IP header must be 20 bytes long");
 
@@ -84,21 +94,21 @@ template <> struct std::formatter<IpV4Header> : SimpleFormatter
     }
 };
 
-inline std::uint16_t checksum(const IpV4Header& ip)
+template <typename HeaderT>
+inline std::uint16_t checksum(const HeaderT& header)
 {
     // First we remove the checksum
-    auto ip_no_checksum{ip};
-    ip_no_checksum.mCheckSum = 0x0;
+    auto header_no_checksum{header};
+    header_no_checksum.zero_out_checksum();
 
     // Then we convert back to network byte order
-    std::array<std::byte, sizeof(IpV4Header)> bytes;
-    std::memcpy(&bytes, &ip_no_checksum, sizeof(ip));
-    byteswapMembers(bytes, LayoutInfo<IpV4Header>::Sizes);
+    std::array<std::byte, sizeof(HeaderT)> bytes;
+    std::memcpy(&bytes, &header_no_checksum, sizeof(header));
+    byteswapMembers(bytes, LayoutInfo<HeaderT>::Sizes);
 
     // Then convert to an array of 16 bit words
-    static constexpr auto cWordsInIp = sizeof(ip) / sizeof(std::uint16_t);
-    static_assert(cWordsInIp == 10);
-    const auto words = std::bit_cast<std::array<const std::uint16_t, cWordsInIp>>(bytes);
+    static constexpr auto cWordsInHeader = sizeof(header) / sizeof(std::uint16_t);
+    const auto words = std::bit_cast<std::array<const std::uint16_t, cWordsInHeader>>(bytes);
 
     // Then we do a cumulative one's complement 16 bit sum over each word
     std::uint16_t result{};
@@ -111,6 +121,6 @@ inline std::uint16_t checksum(const IpV4Header& ip)
     // Then we negate and then byteswap the result back into host byte order
     result = ~result;
     result = std::byteswap(result);
-    std::println("Result: 0x{:x}, checksum: 0x{:x}", result, ip.mCheckSum);
+    std::println("Result: 0x{:x}, checksum: 0x{:x}", result, header.checksum());
     return result;
 }

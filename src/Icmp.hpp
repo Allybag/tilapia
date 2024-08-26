@@ -18,6 +18,16 @@ struct IcmpV4Header
     IcmpType mType;
     std::uint8_t mCode;
     std::uint16_t mCheckSum;
+
+    void zero_out_checksum()
+    {
+        mCheckSum = 0;
+    }
+
+    auto checksum() const
+    {
+        return mCheckSum;
+    }
 };
 
 template <>
@@ -30,12 +40,35 @@ struct IcmpV4Echo
 {
     std::uint16_t mId;
     std::uint16_t mSeq;
+    std::uint32_t mPayload;
 };
 
 template <>
 struct LayoutInfo<IcmpV4Echo>
 {
-    static constexpr std::index_sequence<2, 2> Sizes{};
+    static constexpr std::index_sequence<2, 2, 4> Sizes{};
+};
+
+struct IcmpV4EchoResponse
+{
+    IcmpV4Header mHeader;
+    IcmpV4Echo mBody;
+
+    void zero_out_checksum()
+    {
+        mHeader.zero_out_checksum();
+    }
+
+    auto checksum() const
+    {
+        return mHeader.checksum();
+    }
+};
+
+template <>
+struct LayoutInfo<IcmpV4EchoResponse>
+{
+    static constexpr std::index_sequence<1, 1, 2, 2, 2, 4> Sizes{};
 };
 
 template <> struct std::formatter<IcmpType> : SimpleFormatter
