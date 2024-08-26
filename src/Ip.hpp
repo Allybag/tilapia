@@ -102,6 +102,23 @@ inline std::uint16_t checksum(const HeaderT& header)
     header_no_checksum.zero_out_checksum();
 
     // Then we convert back to network byte order
+    // TODO: We don't actually have to convert to network byte order,
+    // as one's complement addition is commuative
+    // we just have to assemble the right 16 bit words
+    //
+    // For example, for a struct A with layout
+    // { 1 byte, 1 byte, 2 bytes, 4 bytes };
+    // If we read from the network:
+    // 0x12 0x34 0x56 0x78 0xAA 0xBB 0xCC 0xDD
+    // we byteswap to ->
+    // 0x12 0x34 0x78 0x56 0xDD 0xCC 0xBB 0xAA
+    //
+    // We don't need to swap all the way back to network byte order,
+    // we just need to be consistent one way or the other
+    // In the case above, and in an IPv4 header,
+    // we could just byteswap the first 16 bit word
+    // and then we would consistently be in host byte order
+    // We would then not byteswap the final result
     std::array<std::byte, sizeof(HeaderT)> bytes;
     std::memcpy(&bytes, &header_no_checksum, sizeof(header));
     byteswapMembers(bytes, LayoutInfo<HeaderT>::Sizes);
