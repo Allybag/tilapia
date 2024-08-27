@@ -30,6 +30,7 @@ int main()
     IpAddress ip{fromQuartets({10, 3, 3, 3})};
     MacAddress mac{fromSextets({0xaa, 0xbb, 0xbb, 0x0, 0x0, 0xdd})};
     ArpNode arpNode{ip, mac};
+    std::unordered_map<Port, TcpNode> tcpNodes{};
     std::println("Created Arp Node, IP: {}", arpNode.address());
 
     int messagesRemaining{100};
@@ -91,7 +92,7 @@ int main()
 
                         auto ipResponseHeader{ipHeader};
                         std::swap(ipResponseHeader.mSourceAddress, ipResponseHeader.mDestinationAddress);
-                        ipResponseHeader.mCheckSum = checksum(ipResponseHeader); 
+                        ipResponseHeader.mCheckSum = checksum(ipResponseHeader);
 
                         auto ethernetResponseHeader{ethernetHeader};
                         std::swap(ethernetResponseHeader.mSourceMacAddress, ethernetResponseHeader.mDestinationMacAddress);
@@ -109,7 +110,30 @@ int main()
                         auto tcpHeader = fromWire<TcpHeader>(readBuffer + readOffset);
                         readOffset += sizeof(tcpHeader);
                         std::println("{}", tcpHeader);
-                        break;
+                        auto [nodeIt, inserted] = tcpNodes.try_emplace(tcpHeader.mDestinationPort, tcpHeader.mDestinationPort, tcpHeader.mSourcePort);
+                        auto response = nodeIt->second.onMessage(tcpHeader);
+                        if (response.has_value())
+                        {
+                            std::println("{}", *response);
+                            std::uint8_t zero{0};
+                            TcpPseudoHeader psuedoHeader{ipHeader.mSourceAddress, ipHeader.mDestinationAddress, zero, IPProtocol::TCP, response->mHeaderLength};
+                            TcpPsuedoPacket psuedoPacket{psuedoHeader, *response};
+                            response->mCheckSum = checksum(psuedoPacket);
+
+                            auto ipResponseHeader{ipHeader};
+                            std::swap(ipResponseHeader.mSourceAddress, ipResponseHeader.mDestinationAddress);
+                            ipResponseHeader.mCheckSum = checksum(ipResponseHeader);
+
+                            auto ethernetResponseHeader{ethernetHeader};
+                            std::swap(ethernetResponseHeader.mSourceMacAddress, ethernetResponseHeader.mDestinationMacAddress);
+
+                            toWire(ethernetResponseHeader, writeBuffer + writeOffset);
+                            writeOffset += sizeof(ethernetResponseHeader);
+                            toWire(ipResponseHeader, writeBuffer + writeOffset);
+                            writeOffset += sizeof(ipResponseHeader);
+                            toWire(*response, writeBuffer + writeOffset);
+                            writeOffset += sizeof(*response);
+                        }
                     }
                     default:
                         break;
