@@ -45,8 +45,7 @@ struct TcpHeader
     Port mDestinationPort;
     SequenceNumber mSequenceNumber;
     SequenceNumber mAcknowledgementNumber;
-    std::uint8_t mReservedBits: 4; // These are swapped compared to spec
-    std::uint8_t mHeaderLength: 4; // to deal with byte order
+    std::uint8_t mHeaderLength; // Actually 4 bits, followed by 4 bits of 0
     TcpFlags mFlags;
     std::uint16_t mWindowSize;
     std::uint16_t mCheckSum;
@@ -60,6 +59,17 @@ struct TcpHeader
     auto checksum() const
     {
         return mCheckSum;
+    }
+
+    static constexpr auto cLengthOffsetBits{4};
+    std::uint8_t length() const
+    {
+        return mHeaderLength >> cLengthOffsetBits;
+    }
+
+    void setLength(std::uint8_t length)
+    {
+        mHeaderLength = (length << cLengthOffsetBits);
     }
 };
 static_assert(sizeof(TcpHeader) == 20, "TCP header must be 20 bytes long");
@@ -87,7 +97,7 @@ struct LayoutInfo<TcpPseudoHeader>
 };
 
 // Input to generate TCP Checksum
-struct TcpPsuedoPacket
+struct TcpPseudoPacket
 {
     TcpPseudoHeader mPseudoHeader;
     TcpHeader mHeader;
@@ -104,7 +114,7 @@ struct TcpPsuedoPacket
 };
 
 template <>
-struct LayoutInfo<TcpPsuedoPacket>
+struct LayoutInfo<TcpPseudoPacket>
 {
     static constexpr std::index_sequence<4, 4, 1, 1, 2, 2, 2, 4, 4, 1, 1, 2, 2, 2> Sizes{};
 };
@@ -164,7 +174,7 @@ template <> struct std::formatter<TcpHeader> : SimpleFormatter
     auto format(const TcpHeader& header, FormatContext& ctx) const
     {
         return std::format_to(ctx.out(), "TCP Header {}, size {}: {} -> {}",
-            header.mFlags, header.mHeaderLength, header.mSourcePort, header.mDestinationPort);
+            header.mFlags, header.length(), header.mSourcePort, header.mDestinationPort);
     }
 };
 
@@ -183,7 +193,7 @@ public:
             result.mSequenceNumber = mSequenceNumber++;
             result.mFlags = (result.mFlags | TcpFlag::Ack);
             result.mCheckSum = 0;
-            result.mHeaderLength = 5;
+            result.setLength(5);
 
             return result;
         }

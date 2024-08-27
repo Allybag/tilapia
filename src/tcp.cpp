@@ -115,17 +115,19 @@ int main()
                         if (response.has_value())
                         {
                             std::println("{}", *response);
-                            std::uint8_t zero{0};
-                            TcpPseudoHeader psuedoHeader{ipHeader.mSourceAddress, ipHeader.mDestinationAddress, zero, IPProtocol::TCP, response->mHeaderLength};
-                            TcpPsuedoPacket psuedoPacket{psuedoHeader, *response};
-                            response->mCheckSum = checksum(psuedoPacket);
-
-                            auto ipResponseHeader{ipHeader};
-                            std::swap(ipResponseHeader.mSourceAddress, ipResponseHeader.mDestinationAddress);
-                            ipResponseHeader.mCheckSum = checksum(ipResponseHeader);
 
                             auto ethernetResponseHeader{ethernetHeader};
                             std::swap(ethernetResponseHeader.mSourceMacAddress, ethernetResponseHeader.mDestinationMacAddress);
+
+                            auto ipResponseHeader{ipHeader};
+                            ipResponseHeader.mTotalLength = sizeof(ipResponseHeader) + sizeof(*response);
+                            std::swap(ipResponseHeader.mSourceAddress, ipResponseHeader.mDestinationAddress);
+                            ipResponseHeader.mCheckSum = checksum(ipResponseHeader);
+
+                            std::uint8_t zero{0};
+                            TcpPseudoHeader pseudoHeader{ipResponseHeader.mSourceAddress, ipResponseHeader.mDestinationAddress, zero, IPProtocol::TCP, response->length()};
+                            TcpPseudoPacket pseudoPacket{pseudoHeader, *response};
+                            response->mCheckSum = checksum(pseudoPacket);
 
                             toWire(ethernetResponseHeader, writeBuffer + writeOffset);
                             writeOffset += sizeof(ethernetResponseHeader);
