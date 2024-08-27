@@ -130,37 +130,33 @@ template <> struct std::formatter<TcpFlags> : SimpleFormatter
         {
             std::format_to(ctx.out(), "CongestionWindowReduce|");
         }
-        else if (tcpFlags.set(TcpFlag::ExplicitCongestion))
+        if (tcpFlags.set(TcpFlag::ExplicitCongestion))
         {
             std::format_to(ctx.out(), "ExplicitCongestion|");
         }
-        else if (tcpFlags.set(TcpFlag::Urgent))
+        if (tcpFlags.set(TcpFlag::Urgent))
         {
             std::format_to(ctx.out(), "Urgent|");
         }
-        else if (tcpFlags.set(TcpFlag::Ack))
+        if (tcpFlags.set(TcpFlag::Ack))
         {
             std::format_to(ctx.out(), "Ack|");
         }
-        else if (tcpFlags.set(TcpFlag::Push))
+        if (tcpFlags.set(TcpFlag::Push))
         {
             std::format_to(ctx.out(), "Push|");
         }
-        else if (tcpFlags.set(TcpFlag::Reset))
+        if (tcpFlags.set(TcpFlag::Reset))
         {
             std::format_to(ctx.out(), "Reset|");
         }
-        else if (tcpFlags.set(TcpFlag::Syn))
+        if (tcpFlags.set(TcpFlag::Syn))
         {
             std::format_to(ctx.out(), "Syn|");
         }
-        else if (tcpFlags.set(TcpFlag::Fin))
+        if (tcpFlags.set(TcpFlag::Fin))
         {
             std::format_to(ctx.out(), "Fin|");
-        }
-        else
-        {
-            std::format_to(ctx.out(), "|");
         }
 
         return ctx.out();
