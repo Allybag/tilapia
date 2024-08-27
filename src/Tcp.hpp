@@ -112,6 +112,7 @@ struct TcpPseudoPacket
         return mHeader.checksum();
     }
 };
+static_assert(sizeof(TcpPseudoPacket) == sizeof(TcpPseudoHeader) + sizeof(TcpHeader));
 
 template <>
 struct LayoutInfo<TcpPseudoPacket>
