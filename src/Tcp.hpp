@@ -7,18 +7,23 @@
 #include <cstdint>
 #include <bit>
 
-enum class TcpFlags : std::uint8_t
+enum class TcpFlag : std::uint8_t
 {
-    CongestionWindowReduce = 1 << 0,
-    ExplicitCongestion = 1 << 1,
-    Urgent = 1 << 2,
-    Ack = 1 << 3,
-    Push = 1 << 4,
-    Reset = 1 << 5,
-    Syn = 1 << 6,
-    Fin = 1 << 7,
+    // We define these backwards for byte order reasons
+    CongestionWindowReduce = 1 << 7,
+    ExplicitCongestion = 1 << 6,
+    Urgent = 1 << 5,
+    Ack = 1 << 4,
+    Push = 1 << 3,
+    Reset = 1 << 2,
+    Syn = 1 << 1,
+    Fin = 1 << 0,
 };
 
+struct TcpFlags
+{
+    std::uint8_t mValue;
+};
 
 struct TcpHeader
 {
@@ -28,7 +33,7 @@ struct TcpHeader
     std::uint32_t mAcknowledgementNumber;
     std::uint8_t mReservedBits: 4; // These are swapped compared to spec
     std::uint8_t mHeaderLength: 4; // to deal with byte order
-    std::uint8_t mFlags;
+    TcpFlags mFlags;
     std::uint16_t mWindowSize;
     std::uint16_t mCheckSum;
     std::uint16_t mUrgentPointer;
@@ -54,29 +59,45 @@ struct LayoutInfo<TcpHeader>
 template <> struct std::formatter<TcpFlags> : SimpleFormatter
 {
     template <typename FormatContext>
-    auto format(const TcpFlags& tcpFlag, FormatContext& ctx) const
+    auto format(const TcpFlags& tcpFlags, FormatContext& ctx) const
     {
-        switch (tcpFlag)
+        const auto bits = std::bit_cast<std::uint8_t>(tcpFlags);
+        std::format_to(ctx.out(), "Flags: ||");
+        if(bits & std::to_underlying(TcpFlag::CongestionWindowReduce))
         {
-        case TcpFlags::CongestionWindowReduce:
-            return std::format_to(ctx.out(), "CongestionWindowReduce");
-        case TcpFlags::ExplicitCongestion:
-            return std::format_to(ctx.out(), "ExplicitCongestion");
-        case TcpFlags::Urgent:
-            return std::format_to(ctx.out(), "Urgent");
-        case TcpFlags::Ack:
-            return std::format_to(ctx.out(), "Ack");
-        case TcpFlags::Push:
-            return std::format_to(ctx.out(), "Push");
-        case TcpFlags::Reset:
-            return std::format_to(ctx.out(), "Reset");
-        case TcpFlags::Syn:
-            return std::format_to(ctx.out(), "Syn");
-        case TcpFlags::Fin:
-            return std::format_to(ctx.out(), "Fin");
-        default:
-            throw std::runtime_error{std::format("Unexpected TCP Flag: {}", std::to_underlying(tcpFlag))};
+            std::format_to(ctx.out(), "CongestionWindowReduce|");
         }
+        else if(bits & std::to_underlying(TcpFlag::ExplicitCongestion))
+        {
+            std::format_to(ctx.out(), "ExplicitCongestion|");
+        }
+        else if(bits & std::to_underlying(TcpFlag::Urgent))
+        {
+            std::format_to(ctx.out(), "Urgent|");
+        }
+        else if(bits & std::to_underlying(TcpFlag::Ack))
+        {
+            std::format_to(ctx.out(), "Ack|");
+        }
+        else if(bits & std::to_underlying(TcpFlag::Push))
+        {
+            std::format_to(ctx.out(), "Push|");
+        }
+        else if(bits & std::to_underlying(TcpFlag::Reset))
+        {
+            std::format_to(ctx.out(), "Reset|");
+        }
+        else if(bits & std::to_underlying(TcpFlag::Syn))
+        {
+            std::format_to(ctx.out(), "Syn|");
+        }
+        else if(bits & std::to_underlying(TcpFlag::Fin))
+        {
+            std::format_to(ctx.out(), "Fin|");
+        }
+
+        std::format_to(ctx.out(), "|");
+        return ctx.out();
     }
 };
 
@@ -86,8 +107,8 @@ template <> struct std::formatter<TcpHeader> : SimpleFormatter
     template <typename FormatContext>
     auto format(const TcpHeader& header, FormatContext& ctx) const
     {
-        return std::format_to(ctx.out(), "TCP Header num {}, size {}: {} -> {}",
-            header.mSequenceNumber, header.mHeaderLength, header.mSourcePort, header.mDestinationPort);
+        return std::format_to(ctx.out(), "TCP Header {}, size {}: {} -> {}",
+            header.mFlags, header.mHeaderLength, header.mSourcePort, header.mDestinationPort);
     }
 };
 
