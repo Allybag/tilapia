@@ -1,8 +1,9 @@
 #include <tap.hpp>
-#include <Ethernet.hpp>
-#include <Ip.hpp>
-#include <Icmp.hpp>
 #include <Arp.hpp>
+#include <Ethernet.hpp>
+#include <Icmp.hpp>
+#include <Ip.hpp>
+#include <Tcp.hpp>
 
 #include <bit>
 #include <iostream>
@@ -101,6 +102,13 @@ int main()
                         writeOffset += sizeof(ipResponseHeader);
                         toWire(response, writeBuffer + writeOffset);
                         writeOffset += sizeof(response);
+                        break;
+                    }
+                    case IPProtocol::TCP:
+                    {
+                        auto tcpHeader = fromWire<TcpHeader>(readBuffer + readOffset);
+                        readOffset += sizeof(tcpHeader);
+                        std::println("{}", tcpHeader);
                         break;
                     }
                     default:
