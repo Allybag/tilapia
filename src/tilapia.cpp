@@ -138,17 +138,29 @@ int main()
 
                             std::uint8_t zero{0};
                             TcpPseudoHeader pseudoHeader{ipResponseHeader.mSourceAddress, ipResponseHeader.mDestinationAddress, zero, IPProtocol::TCP, response->length()};
-                            // TcpPseudoPacket pseudoPacket{pseudoHeader, *response};
-                            response->mCheckSum = checksum(pseudoHeader);
-
-                            constexpr auto cHeaderLength{sizeof(EthernetHeader) + sizeof(IpV4Header) + sizeof(TcpHeader)};
-                            constexpr auto cGsoSize{1440};
-                            constexpr auto cChecksumStart{sizeof(EthernetHeader) + sizeof(IpV4Header)};
-                            constexpr auto cChecksumOffset{16};
-                            constexpr auto cNumBuffers{1};
-                            VnetHeader vnetTcpHeader{ VnetFlag::NeedsChecksum, GenericSegmentOffloadType::TcpIp4, cHeaderLength, cGsoSize, cChecksumStart, cChecksumOffset, cNumBuffers};
-                            toWire(vnetTcpHeader, writeBuffer + writeOffset);
-                            writeOffset += sizeof(vnetTcpHeader);
+                            static constexpr auto cSoftwareTcpChecksums = true;
+                            if constexpr (cSoftwareTcpChecksums)
+                            {
+                                TcpPseudoPacket pseudoPacket{pseudoHeader, *response};
+                                std::println("Calculating TCP Checksum");
+                                std::println("------------------------------------------------");
+                                response->mCheckSum = checksum(pseudoPacket);
+                                std::println("------------------------------------------------");
+                                toWire(vnetWriteHeader, writeBuffer + writeOffset);
+                                writeOffset += sizeof(vnetWriteHeader);
+                            }
+                            else
+                            {
+                                constexpr auto cHeaderLength{sizeof(EthernetHeader) + sizeof(IpV4Header) + sizeof(TcpHeader)};
+                                constexpr auto cGsoSize{1440};
+                                constexpr auto cChecksumStart{sizeof(EthernetHeader) + sizeof(IpV4Header)};
+                                constexpr auto cChecksumOffset{16};
+                                constexpr auto cNumBuffers{1};
+                                VnetHeader vnetTcpHeader{VnetFlag::NeedsChecksum, GenericSegmentOffloadType::TcpIp4, cHeaderLength, cGsoSize,
+                                                         cChecksumStart, cChecksumOffset, cNumBuffers};
+                                toWire(vnetTcpHeader, writeBuffer + writeOffset);
+                                writeOffset += sizeof(vnetTcpHeader);
+                            }
 
                             toWire(ethernetResponseHeader, writeBuffer + writeOffset);
                             writeOffset += sizeof(ethernetResponseHeader);

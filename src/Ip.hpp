@@ -133,7 +133,7 @@ inline std::uint16_t checksum(const HeaderT& header)
     {
         std::uint32_t sum = result + word;
         result = (sum & 0xFFFF) + (sum >> 16);
-        // std::println("result 0x{:x}, sum 0x{:x}, word 0x{:x}", result, sum, word);
+        std::println("result 0x{:x}, sum 0x{:x}, word 0x{:x}", result, sum, word);
     }
 
     // Then we negate and then byteswap the result back into host byte order
