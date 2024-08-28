@@ -146,6 +146,14 @@ int main()
                                 std::println("------------------------------------------------");
                                 response->mCheckSum = checksum(pseudoPacket);
                                 std::println("------------------------------------------------");
+
+                                std::println("Calculating length hacked TCP Checksum");
+                                std::println("------------------------------------------------");
+                                auto length = response->length();
+                                pseudoPacket.mHeader.mHeaderLength = length;
+                                response->mCheckSum = checksum(pseudoPacket);
+                                pseudoPacket.mHeader.setLength(length);
+                                std::println("------------------------------------------------");
                                 toWire(vnetWriteHeader, writeBuffer + writeOffset);
                                 writeOffset += sizeof(vnetWriteHeader);
                             }
