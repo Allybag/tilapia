@@ -137,7 +137,7 @@ int main()
                             ipResponseHeader.mCheckSum = checksum(ipResponseHeader);
 
                             std::uint8_t zero{0};
-                            TcpPseudoHeader pseudoHeader{ipResponseHeader.mSourceAddress, ipResponseHeader.mDestinationAddress, zero, IPProtocol::TCP, response->length()};
+                            TcpPseudoHeader pseudoHeader{ipResponseHeader.mSourceAddress, ipResponseHeader.mDestinationAddress, zero, IPProtocol::TCP, sizeof(TcpHeader)};
                             static constexpr auto cSoftwareTcpChecksums = true;
                             if constexpr (cSoftwareTcpChecksums)
                             {
