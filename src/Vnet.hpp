@@ -11,6 +11,7 @@
 
 enum class VnetFlag : std::uint8_t
 {
+    None = 0,
     NeedsChecksum = 1,
     ChecksumValid = 2,
 };
@@ -58,6 +59,8 @@ template <> struct std::formatter<VnetFlag> : SimpleFormatter
     {
         switch (vnetFlag)
         {
+        case VnetFlag::None:
+            return std::format_to(ctx.out(), "None");
         case VnetFlag::ChecksumValid:
             return std::format_to(ctx.out(), "ChecksumValid");
         case VnetFlag::NeedsChecksum:

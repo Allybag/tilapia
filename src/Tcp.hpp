@@ -170,8 +170,8 @@ template <> struct std::formatter<TcpHeader> : SimpleFormatter
     template <typename FormatContext>
     auto format(const TcpHeader& header, FormatContext& ctx) const
     {
-        return std::format_to(ctx.out(), "TCP Header {}, size {}: {} -> {}",
-            header.mFlags, header.length(), header.mSourcePort, header.mDestinationPort);
+        return std::format_to(ctx.out(), "TCP Header {}, size {}, checksum 0x{:x}: {} -> {}",
+            header.mFlags, header.length(), header.mCheckSum, header.mSourcePort, header.mDestinationPort);
     }
 };
 
