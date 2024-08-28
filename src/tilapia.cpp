@@ -41,6 +41,7 @@ int main()
     VnetFlag mFlag;
     GenericSegmentOffloadType mGsoType;
     VnetHeader vnetWriteHeader{ VnetFlag::ChecksumValid, GenericSegmentOffloadType::None, 0, 0, 0, 0, 1}; 
+    std::println("Will be writing virtual network header to all frames: {}", vnetWriteHeader);
     while (messagesRemaining)
     {
         int bytesRead = read(tap.descriptor(), readBuffer, sizeof(readBuffer));
@@ -60,6 +61,7 @@ int main()
 
         auto vnetHeader = fromWire<VnetHeader>(readBuffer);
         readOffset += sizeof(vnetHeader);
+        std::println("Received a virtual network header, size {}, {}", bytesRead, vnetHeader);
 
         auto ethernetHeader = fromWire<EthernetHeader>(readBuffer + readOffset);
         readOffset += sizeof(ethernetHeader);

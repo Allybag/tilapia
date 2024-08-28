@@ -41,8 +41,6 @@ template <> struct std::formatter<EtherType> : SimpleFormatter
     }
 };
 
-
-
 struct MacAddress
 {
     std::uint8_t mValue[6];

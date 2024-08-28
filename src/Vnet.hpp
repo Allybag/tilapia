@@ -50,3 +50,54 @@ struct LayoutInfo<VnetHeader>
     // This is not a network header, so should not be byteswapped
     static constexpr std::index_sequence<0> Sizes{};
 };
+
+template <> struct std::formatter<VnetFlag> : SimpleFormatter
+{
+    template <typename FormatContext>
+    auto format(const VnetFlag& vnetFlag, FormatContext& ctx) const
+    {
+        switch (vnetFlag)
+        {
+        case VnetFlag::ChecksumValid:
+            return std::format_to(ctx.out(), "ChecksumValid");
+        case VnetFlag::NeedsChecksum:
+            return std::format_to(ctx.out(), "NeedsChecksum");
+        default:
+            throw std::runtime_error{std::format("Unexpected VNET Flag: {}", std::to_underlying(vnetFlag))};
+        }
+    }
+};
+
+template <> struct std::formatter<GenericSegmentOffloadType> : SimpleFormatter
+{
+    template <typename FormatContext>
+    auto format(const GenericSegmentOffloadType& gsoType, FormatContext& ctx) const
+    {
+        switch (gsoType)
+        {
+        case GenericSegmentOffloadType::None:
+            return std::format_to(ctx.out(), "None");
+        case GenericSegmentOffloadType::TcpIp4:
+            return std::format_to(ctx.out(), "TcpIp4");
+        case GenericSegmentOffloadType::Udp:
+            return std::format_to(ctx.out(), "Udp");
+        case GenericSegmentOffloadType::TcpIp6:
+            return std::format_to(ctx.out(), "TcpIp6");
+        case GenericSegmentOffloadType::TcpEcn:
+            return std::format_to(ctx.out(), "TcpEcn");
+        case GenericSegmentOffloadType::UdpL4:
+            return std::format_to(ctx.out(), "UdpL4");
+        default:
+            throw std::runtime_error{std::format("Unexpected GSO type: {}", std::to_underlying(gsoType))};
+        }
+    }
+};
+
+template <> struct std::formatter<VnetHeader> : SimpleFormatter
+{
+    template <typename FormatContext>
+    auto format(const VnetHeader& header, FormatContext& ctx) const
+    {
+        return std::format_to(ctx.out(), "Virtual Network Header: {}, {}", header.mFlag, header.mGsoType);
+    }
+};
