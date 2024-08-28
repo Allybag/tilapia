@@ -40,7 +40,7 @@ int main()
     char writeBuffer[2000];
     VnetFlag mFlag;
     GenericSegmentOffloadType mGsoType;
-    VnetHeader vnetWriteHeader{ VnetFlag::ChecksumValid, GenericSegmentOffloadType::None, 0, 0, 0, 0, 1}; 
+    VnetHeader vnetWriteHeader{ VnetFlag::ChecksumValid, GenericSegmentOffloadType::None, 0, 0, 0, 0, 1};
     std::println("Will be writing virtual network header to all frames: {}", vnetWriteHeader);
     while (messagesRemaining)
     {
@@ -138,11 +138,17 @@ int main()
 
                             std::uint8_t zero{0};
                             TcpPseudoHeader pseudoHeader{ipResponseHeader.mSourceAddress, ipResponseHeader.mDestinationAddress, zero, IPProtocol::TCP, response->length()};
-                            TcpPseudoPacket pseudoPacket{pseudoHeader, *response};
-                            response->mCheckSum = checksum(pseudoPacket);
+                            // TcpPseudoPacket pseudoPacket{pseudoHeader, *response};
+                            response->mCheckSum = checksum(pseudoHeader);
 
-                            toWire(vnetWriteHeader, writeBuffer + writeOffset);
-                            writeOffset += sizeof(vnetWriteHeader);
+                            constexpr auto cHeaderLength{sizeof(EthernetHeader) + sizeof(IpV4Header) + sizeof(TcpHeader)};
+                            constexpr auto cGsoSize{1440};
+                            constexpr auto cChecksumStart{sizeof(EthernetHeader) + sizeof(IpV4Header)};
+                            constexpr auto cChecksumOffset{16};
+                            constexpr auto cNumBuffers{1};
+                            VnetHeader vnetTcpHeader{ VnetFlag::NeedsChecksum, GenericSegmentOffloadType::TcpIp4, cHeaderLength, cGsoSize, cChecksumStart, cChecksumOffset, cNumBuffers};
+                            toWire(vnetTcpHeader, writeBuffer + writeOffset);
+                            writeOffset += sizeof(vnetTcpHeader);
 
                             toWire(ethernetResponseHeader, writeBuffer + writeOffset);
                             writeOffset += sizeof(ethernetResponseHeader);

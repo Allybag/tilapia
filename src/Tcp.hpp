@@ -87,6 +87,15 @@ struct TcpPseudoHeader
     std::uint8_t mReservedZeros;
     IPProtocol mProtocol;
     std::uint16_t mTcpLength;
+
+    void zero_out_checksum()
+    {
+    }
+
+    auto checksum() const
+    {
+        return 0;
+    }
 };
 static_assert(sizeof(TcpPseudoHeader) == 12, "TCP psuedo header must be 12 bytes long");
 
