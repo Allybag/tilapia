@@ -45,7 +45,7 @@ template <typename HeaderT>
 auto fromWire(const char* buffer) -> HeaderT
 {
     using HeaderLayout = LayoutInfo<HeaderT>;
-    static_assert(totalSize(HeaderLayout::Sizes) == sizeof(HeaderT));
+    static_assert(totalSize(HeaderLayout::Sizes) == sizeof(HeaderT) || totalSize(HeaderLayout::Sizes) == 0);
     if constexpr (HeaderLayout::Sizes.size() == 0)
     {
         throw std::runtime_error{"No layout info for requested type"};
@@ -54,7 +54,11 @@ auto fromWire(const char* buffer) -> HeaderT
     std::array<std::byte, sizeof(HeaderT)> bytes;
     std::memcpy(&bytes, buffer, sizeof(bytes));
 
-    byteswapMembers(bytes, HeaderLayout::Sizes);
+    // We set the total size to 0 if we shouldn't byteswap the header
+    if constexpr (totalSize(HeaderLayout::Sizes) != 0)
+    {
+        byteswapMembers(bytes, HeaderLayout::Sizes);
+    }
 
     return std::bit_cast<HeaderT>(bytes);
 }
@@ -63,7 +67,7 @@ template <typename HeaderT>
 void toWire(const HeaderT& header, char* buffer)
 {
     using HeaderLayout = LayoutInfo<HeaderT>;
-    static_assert(totalSize(HeaderLayout::Sizes) == sizeof(HeaderT));
+    static_assert(totalSize(HeaderLayout::Sizes) == sizeof(HeaderT) || totalSize(HeaderLayout::Sizes) == 0);
     if constexpr (HeaderLayout::Sizes.size() == 0)
     {
         throw std::runtime_error{"No layout info for requested type"};
@@ -72,7 +76,10 @@ void toWire(const HeaderT& header, char* buffer)
     std::array<std::byte, sizeof(HeaderT)> bytes;
     std::memcpy(&bytes, &header, sizeof(bytes));
 
-    byteswapMembers(bytes, HeaderLayout::Sizes);
+    if constexpr (totalSize(HeaderLayout::Sizes) != 0)
+    {
+        byteswapMembers(bytes, HeaderLayout::Sizes);
+    }
 
     std::memcpy(buffer, &bytes, sizeof(bytes));
 }

@@ -32,15 +32,24 @@ struct TapDevice
         }
 
         struct ifreq interfaceConfig{};
-        // IFF_TUN  : TUN Device
-        // IFF_TAP  : TAP Device
-        // IFF_NO_PI: No Packet Information
-        interfaceConfig.ifr_flags = IFF_TAP | IFF_NO_PI;
+        // IFF_TUN      : TUN Device
+        // IFF_TAP      : TAP Device
+        // IFF_NO_PI    : No Packet Information
+        // IFF_VNET_HDR : Prepend Ethernet frame with VNET Header
+        interfaceConfig.ifr_flags = IFF_TAP | IFF_NO_PI | IFF_VNET_HDR;
         strncpy(interfaceConfig.ifr_name, name.c_str(), IFNAMSIZ);
 
         if (ioctl(mFileDescriptor, TUNSETIFF, static_cast<void*>(&interfaceConfig)) < 0)
         {
             std::println("Failed to configure tap device: {}", strerror(errno));
+            close(mFileDescriptor);
+            exit(1);
+        }
+
+        int vnetHeaderSize{12};
+        if (ioctl(mFileDescriptor, TUNSETVNETHDRSZ, &vnetHeaderSize) < 0)
+        {
+            std::println("Failed to set VNET header size : {}", strerror(errno));
             close(mFileDescriptor);
             exit(1);
         }

@@ -4,6 +4,7 @@
 #include <Icmp.hpp>
 #include <Ip.hpp>
 #include <Tcp.hpp>
+#include <Vnet.hpp>
 
 #include <bit>
 #include <iostream>
@@ -37,6 +38,9 @@ int main()
 
     char readBuffer[2000];
     char writeBuffer[2000];
+    VnetFlag mFlag;
+    GenericSegmentOffloadType mGsoType;
+    VnetHeader vnetWriteHeader{ VnetFlag::ChecksumValid, GenericSegmentOffloadType::None, 0, 0, 0, 0, 1}; 
     while (messagesRemaining)
     {
         int bytesRead = read(tap.descriptor(), readBuffer, sizeof(readBuffer));
@@ -53,7 +57,11 @@ int main()
 
         std::size_t readOffset{0};
         std::size_t writeOffset{0};
-        auto ethernetHeader = fromWire<EthernetHeader>(readBuffer);
+
+        auto vnetHeader = fromWire<VnetHeader>(readBuffer);
+        readOffset += sizeof(vnetHeader);
+
+        auto ethernetHeader = fromWire<EthernetHeader>(readBuffer + readOffset);
         readOffset += sizeof(ethernetHeader);
 
         std::println("Received a message of size {}, Ethernet Header: {}", bytesRead, ethernetHeader);
@@ -97,6 +105,8 @@ int main()
                         auto ethernetResponseHeader{ethernetHeader};
                         std::swap(ethernetResponseHeader.mSourceMacAddress, ethernetResponseHeader.mDestinationMacAddress);
 
+                        toWire(vnetWriteHeader, writeBuffer + writeOffset);
+                        writeOffset += sizeof(vnetWriteHeader);
                         toWire(ethernetResponseHeader, writeBuffer + writeOffset);
                         writeOffset += sizeof(ethernetResponseHeader);
                         toWire(ipResponseHeader, writeBuffer + writeOffset);
@@ -129,6 +139,9 @@ int main()
                             TcpPseudoPacket pseudoPacket{pseudoHeader, *response};
                             response->mCheckSum = checksum(pseudoPacket);
 
+                            toWire(vnetWriteHeader, writeBuffer + writeOffset);
+                            writeOffset += sizeof(vnetWriteHeader);
+
                             toWire(ethernetResponseHeader, writeBuffer + writeOffset);
                             writeOffset += sizeof(ethernetResponseHeader);
                             toWire(ipResponseHeader, writeBuffer + writeOffset);
@@ -160,6 +173,10 @@ int main()
                 if (arpResponse.has_value())
                 {
                     std::println("Arp Response: Header {}, Body {}", arpResponse->mHeader, arpResponse->mBody);
+
+                    toWire(vnetWriteHeader, writeBuffer + writeOffset);
+                    writeOffset += sizeof(vnetWriteHeader);
+
                     auto ethernetResponseHeader{ethernetHeader};
                     std::swap(ethernetResponseHeader.mSourceMacAddress, ethernetResponseHeader.mDestinationMacAddress);
                     toWire(ethernetResponseHeader, writeBuffer + writeOffset);
