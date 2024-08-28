@@ -144,16 +144,20 @@ int main()
                                 TcpPseudoPacket pseudoPacket{pseudoHeader, *response};
                                 std::println("Calculating TCP Checksum");
                                 std::println("------------------------------------------------");
-                                response->mCheckSum = checksum(pseudoPacket);
+                                auto tcpChecksum = checksum(pseudoPacket);
                                 std::println("------------------------------------------------");
 
-                                std::println("Calculating length hacked TCP Checksum");
+                                std::println("Calculating TCP Checksum: Sami Style");
                                 std::println("------------------------------------------------");
-                                auto length = response->length();
-                                pseudoPacket.mHeader.mHeaderLength = length;
-                                response->mCheckSum = checksum(pseudoPacket);
-                                pseudoPacket.mHeader.setLength(length);
+                                int tcp_v4_checksum(uint8_t* data, uint32_t len, uint32_t saddr, uint32_t daddr);
+                                auto saddr = std::byteswap(std::bit_cast<std::uint32_t>(pseudoHeader.mSourceIp));
+                                auto daddr = std::byteswap(std::bit_cast<std::uint32_t>(pseudoHeader.mDestinationAddress));
+                                char sami_buffer[100];
+                                toWire(*response, sami_buffer);
+                                auto sami_checksum = tcp_v4_checksum(reinterpret_cast<std::uint8_t*>(sami_buffer), sizeof(TcpHeader), saddr, daddr);
+                                std::println("Sami style checksum: 0x{:x}", std::byteswap(sami_checksum));
                                 std::println("------------------------------------------------");
+                                response->mCheckSum = tcpChecksum;
                                 toWire(vnetWriteHeader, writeBuffer + writeOffset);
                                 writeOffset += sizeof(vnetWriteHeader);
                             }
