@@ -73,6 +73,7 @@ int main()
             case EtherType::InternetProtocolVersion4:
             {
                 auto ipHeader = fromWire<IpV4Header>(readBuffer + readOffset);
+                auto packetEndOffset = readOffset + ipHeader.mTotalLength;
                 readOffset += sizeof(ipHeader);
                 std::println("{}, checksum 0x{:x}", ipHeader, checksum(ipHeader));
                 std::size_t myHeaderLen{ipHeader.mVersionLength.mLength};
@@ -139,6 +140,19 @@ int main()
                         for (const auto& option : options)
                         {
                             std::println("TcpOption: {}", option);
+                        }
+
+                        if (readOffset != packetEndOffset)
+                        {
+                            if (readOffset > packetEndOffset)
+                            {
+                                std::println("Read offset {} past packet end offset", readOffset, packetEndOffset);
+                                std::cout << std::flush;
+                                throw std::runtime_error{"Read past end of packet"};
+                            }
+
+                            auto payload = std::string{readBuffer + readOffset, packetEndOffset - readOffset};
+                            std::println("Received TCP Payload: {}", payload);
                         }
 
                         auto [nodeIt, inserted] = tcpNodes.try_emplace(tcpHeader.mDestinationPort, tcpHeader.mDestinationPort, tcpHeader.mSourcePort);
