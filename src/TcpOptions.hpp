@@ -21,6 +21,7 @@ enum class TcpOptionType : std::uint8_t
     UserTimeout = 28,
     Authentication = 29,
     Multipath = 30,
+    FastOpen = 34,
 };
 
 
@@ -52,6 +53,8 @@ template <> struct std::formatter<TcpOptionType> : SimpleFormatter
             return std::format_to(ctx.out(), "Authentication");
         case TcpOptionType::Multipath:
             return std::format_to(ctx.out(), "Multipath");
+        case TcpOptionType::FastOpen:
+            return std::format_to(ctx.out(), "FastOpen");
         default:
             throw std::runtime_error{std::format("Unexpected TCP Option type: {}", std::to_underlying(optionType))};
         }
@@ -93,6 +96,7 @@ auto fromWire<TcpOption>(const char* buffer) -> TcpOption
     switch (result.mType)
     {
         case TcpOptionType::SelectiveAcknowledgementPermitted:
+        case TcpOptionType::FastOpen:
             assert(result.mSize == 2);
             return result;
         case TcpOptionType::WindowScale:
@@ -146,6 +150,7 @@ std::size_t toWire(const TcpOption& option, char* buffer)
     switch (option.mType)
     {
         case TcpOptionType::SelectiveAcknowledgementPermitted:
+        case TcpOptionType::FastOpen:
             assert(option.mSize == 2);
             std::println("Warning: Writing unsupported TCP Option: {}", std::to_underlying(option.mType));
             return writePointer - buffer;
@@ -177,8 +182,8 @@ template <> struct std::formatter<TcpOption> : SimpleFormatter
     template <typename FormatContext>
     auto format(const TcpOption& option, FormatContext& ctx) const
     {
-        using enum TcpOptionType;
         std::format_to(ctx.out(), "{}, size {}", option.mType, option.mSize);
+        using enum TcpOptionType;
         switch (option.mType)
         {
         case TcpOptionType::EndOfOptions:
@@ -186,6 +191,7 @@ template <> struct std::formatter<TcpOption> : SimpleFormatter
         case TcpOptionType::UserTimeout:
         case TcpOptionType::Authentication:
         case TcpOptionType::Multipath:
+        case TcpOptionType::FastOpen:
             return ctx.out();
         case TcpOptionType::MaximumSegmentSize:
             return std::format_to(ctx.out(), ", data: {}", option.mData);
