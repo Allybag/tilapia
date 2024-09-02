@@ -77,7 +77,6 @@ auto fromWire<TcpOption>(const char* buffer) -> TcpOption
     TcpOption result{};
 
     result.mType = *reinterpret_cast<const TcpOptionType*>(buffer);
-    std::println("Option type {}, buffer {}", result.mType, static_cast<const void*>(buffer));
     switch (result.mType)
     {
         case TcpOptionType::EndOfOptions:
@@ -91,7 +90,6 @@ auto fromWire<TcpOption>(const char* buffer) -> TcpOption
     };
 
     result.mSize = asSizedInt.template operator()<std::uint8_t>(1);
-    std::println("Size {}, buffer {}", result.mSize, static_cast<const void*>(buffer));
 
     switch (result.mType)
     {
@@ -105,10 +103,8 @@ auto fromWire<TcpOption>(const char* buffer) -> TcpOption
             result.mData = asSizedInt.template operator()<std::uint8_t>();
             return result;
         case TcpOptionType::MaximumSegmentSize:
-            std::println("MSS: Option type {}, buffer {}", result.mType, static_cast<const void*>(buffer));
             assert(result.mSize == 4);
             result.mData = asSizedInt.template operator()<std::uint16_t>();
-            std::println("MSS: Data: {}, buffer {}", result.mData, static_cast<const void*>(buffer));
             return result;
         case TcpOptionType::Timestamps:
             assert(result.mSize == 10);

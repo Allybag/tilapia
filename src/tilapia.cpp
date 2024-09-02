@@ -122,13 +122,9 @@ int main()
                         std::vector<TcpOption> options{};
                         static constexpr auto cLengthUnits{4};
                         auto endOfOptions = readOffset + ((tcpHeader.length() * cLengthUnits) - sizeof(TcpHeader));
-                        std::println("Length: {}, readOffset {}, endOfOptions {}", tcpHeader.length(), readOffset, endOfOptions);
-                        std::cout << std::flush;
                         while (readOffset < endOfOptions)
                         {
                             auto tcpOption = fromWire<TcpOption>(readBuffer + readOffset);
-                            std::println("TcpOption: {}", tcpOption);
-                            std::cout << std::flush;
                             options.push_back(tcpOption);
                             readOffset += tcpOption.mSize;
                         }
@@ -136,11 +132,15 @@ int main()
                         if (readOffset != endOfOptions)
                         {
                             std::println("Read to {}, past options end {}", readOffset, endOfOptions);
+                            std::cout << std::flush;
+                            throw std::runtime_error{"Read too many TCP options"};
                         }
+
                         for (const auto& option : options)
                         {
                             std::println("TcpOption: {}", option);
                         }
+
                         auto [nodeIt, inserted] = tcpNodes.try_emplace(tcpHeader.mDestinationPort, tcpHeader.mDestinationPort, tcpHeader.mSourcePort);
                         auto response = nodeIt->second.onMessage(tcpHeader);
                         if (response.has_value())
