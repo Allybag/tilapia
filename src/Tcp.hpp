@@ -5,9 +5,10 @@
 #include <Ip.hpp>
 #include <TcpOptions.hpp>
 
+#include <bit>
 #include <cstddef>
 #include <cstdint>
-#include <bit>
+#include <span>
 
 enum class TcpFlag : std::uint8_t
 {
@@ -130,6 +131,25 @@ struct LayoutInfo<TcpPseudoPacket>
     static constexpr std::index_sequence<4, 4, 1, 1, 2, 2, 2, 4, 4, 1, 1, 2, 2, 2> Sizes{};
 };
 
+inline std::uint16_t tcp_checksum(const TcpPseudoPacket& header, std::span<TcpOption> options, std::span<char> payload)
+{
+    auto header_checksum_negated = checksum(header);
+    auto header_checksum_network_byte_order = std::byteswap(~header_checksum_negated);
+
+    static constexpr auto cOptionBufferSize{60};
+    char optionBuffer[cOptionBufferSize];
+    auto optionWriteIndex = 0;
+    for (const auto& option : options)
+    {
+        optionWriteIndex += toWire(option, optionBuffer + optionWriteIndex);
+    }
+
+    auto options_checksum_negated_nbo = checksum(header_checksum_network_byte_order, optionBuffer, optionWriteIndex);
+    auto options_checksum_nbo = ~options_checksum_negated_nbo;
+
+    auto payload_checksum_nbo = checksum(options_checksum_nbo, payload.data(), payload.size());
+    return std::byteswap(payload_checksum_nbo);
+}
 
 template <> struct std::formatter<TcpFlags> : SimpleFormatter
 {

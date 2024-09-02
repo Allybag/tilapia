@@ -150,3 +150,25 @@ inline std::uint16_t checksum(const HeaderT& header)
     return result;
 }
 
+inline std::uint16_t checksum(std::uint16_t starting_sum, const char* buffer, std::size_t count)
+{
+    // We expect starting_sum and the buffer to both be in host byte order
+    auto result = starting_sum;
+    std::size_t words = count / 2;
+    for (auto i = 0; i < words; i += 1)
+    {
+        auto word = *reinterpret_cast<const std::uint16_t*>(buffer + (i * 2));
+        std::uint32_t sum = result + word;
+        result = (sum & 0xFFFF) + (sum >> 16);
+    }
+
+    if (count % 2 == 1)
+    {
+        auto last_word = *reinterpret_cast<const std::uint8_t*>(buffer + (count - 1));
+        std::uint32_t sum = result + last_word;
+        result = (sum & 0xFFFF) + (sum >> 16);
+    }
+
+    result = ~result;
+    return result;
+}

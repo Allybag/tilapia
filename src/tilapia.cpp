@@ -142,18 +142,22 @@ int main()
                             std::println("TcpOption: {}", option);
                         }
 
-                        if (readOffset != packetEndOffset)
+                        if (readOffset > packetEndOffset)
                         {
-                            if (readOffset > packetEndOffset)
-                            {
-                                std::println("Read offset {} past packet end offset", readOffset, packetEndOffset);
-                                std::cout << std::flush;
-                                throw std::runtime_error{"Read past end of packet"};
-                            }
-
-                            auto payload = std::string{readBuffer + readOffset, packetEndOffset - readOffset};
-                            std::println("Received TCP Payload: {}", payload);
+                            std::println("Read offset {} past packet end offset", readOffset, packetEndOffset);
+                            std::cout << std::flush;
+                            throw std::runtime_error{"Read past end of packet"};
                         }
+
+                        auto payload = std::span<char>{readBuffer + readOffset, packetEndOffset - readOffset};
+                        std::println("Received TCP Payload: {}", payload);
+
+
+                        std::uint8_t zero{0};
+                        TcpPseudoHeader pseudoReadHeader{ipHeader.mSourceAddress, ipHeader.mDestinationAddress, zero, IPProtocol::TCP, tcpHeader.length()};
+                        TcpPseudoPacket pseudoReadPacket{pseudoReadHeader, tcpHeader};
+                        auto read_checksum = tcp_checksum(pseudoReadPacket, options, payload);
+                        std::println("TCP Receive checksum {} vs calculated {}", tcpHeader.checksum(), read_checksum);
 
                         auto [nodeIt, inserted] = tcpNodes.try_emplace(tcpHeader.mDestinationPort, tcpHeader.mDestinationPort, tcpHeader.mSourcePort);
                         auto response = nodeIt->second.onMessage(tcpHeader);
@@ -169,7 +173,6 @@ int main()
                             std::swap(ipResponseHeader.mSourceAddress, ipResponseHeader.mDestinationAddress);
                             ipResponseHeader.mCheckSum = checksum(ipResponseHeader);
 
-                            std::uint8_t zero{0};
                             TcpPseudoHeader pseudoHeader{ipResponseHeader.mSourceAddress, ipResponseHeader.mDestinationAddress, zero, IPProtocol::TCP, sizeof(TcpHeader)};
                             static constexpr auto cSoftwareTcpChecksums = true;
                             if constexpr (cSoftwareTcpChecksums)
