@@ -64,7 +64,7 @@ auto fromWire(const char* buffer) -> HeaderT
 }
 
 template <typename HeaderT>
-void toWire(const HeaderT& header, char* buffer)
+std::size_t toWire(const HeaderT& header, char* buffer)
 {
     using HeaderLayout = LayoutInfo<HeaderT>;
     static_assert(totalSize(HeaderLayout::Sizes) == sizeof(HeaderT) || totalSize(HeaderLayout::Sizes) == 0);
@@ -82,4 +82,5 @@ void toWire(const HeaderT& header, char* buffer)
     }
 
     std::memcpy(buffer, &bytes, sizeof(bytes));
+    return sizeof(HeaderT);
 }

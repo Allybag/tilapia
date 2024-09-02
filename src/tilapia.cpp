@@ -10,6 +10,7 @@
 #include <iostream>
 #include <iomanip>
 #include <print>
+#include <vector>
 
 int main()
 {
@@ -107,14 +108,10 @@ int main()
                         auto ethernetResponseHeader{ethernetHeader};
                         std::swap(ethernetResponseHeader.mSourceMacAddress, ethernetResponseHeader.mDestinationMacAddress);
 
-                        toWire(vnetWriteHeader, writeBuffer + writeOffset);
-                        writeOffset += sizeof(vnetWriteHeader);
-                        toWire(ethernetResponseHeader, writeBuffer + writeOffset);
-                        writeOffset += sizeof(ethernetResponseHeader);
-                        toWire(ipResponseHeader, writeBuffer + writeOffset);
-                        writeOffset += sizeof(ipResponseHeader);
-                        toWire(response, writeBuffer + writeOffset);
-                        writeOffset += sizeof(response);
+                        writeOffset += toWire(vnetWriteHeader, writeBuffer + writeOffset);
+                        writeOffset += toWire(ethernetResponseHeader, writeBuffer + writeOffset);
+                        writeOffset += toWire(ipResponseHeader, writeBuffer + writeOffset);
+                        writeOffset += toWire(response, writeBuffer + writeOffset);
                         break;
                     }
                     case IPProtocol::TCP:
@@ -122,6 +119,28 @@ int main()
                         auto tcpHeader = fromWire<TcpHeader>(readBuffer + readOffset);
                         readOffset += sizeof(tcpHeader);
                         std::println("{}", tcpHeader);
+                        std::vector<TcpOption> options{};
+                        static constexpr auto cLengthUnits{4};
+                        auto endOfOptions = readOffset + ((tcpHeader.length() * cLengthUnits) - sizeof(TcpHeader));
+                        std::println("Length: {}, readOffset {}, endOfOptions {}", tcpHeader.length(), readOffset, endOfOptions);
+                        std::cout << std::flush;
+                        while (readOffset < endOfOptions)
+                        {
+                            auto tcpOption = fromWire<TcpOption>(readBuffer + readOffset);
+                            std::println("TcpOption: {}", tcpOption);
+                            std::cout << std::flush;
+                            options.push_back(tcpOption);
+                            readOffset += tcpOption.mSize;
+                        }
+
+                        if (readOffset != endOfOptions)
+                        {
+                            std::println("Read to {}, past options end {}", readOffset, endOfOptions);
+                        }
+                        for (const auto& option : options)
+                        {
+                            std::println("TcpOption: {}", option);
+                        }
                         auto [nodeIt, inserted] = tcpNodes.try_emplace(tcpHeader.mDestinationPort, tcpHeader.mDestinationPort, tcpHeader.mSourcePort);
                         auto response = nodeIt->second.onMessage(tcpHeader);
                         if (response.has_value())
@@ -143,8 +162,7 @@ int main()
                             {
                                 TcpPseudoPacket pseudoPacket{pseudoHeader, *response};
                                 response->mCheckSum = checksum(pseudoPacket);
-                                toWire(vnetWriteHeader, writeBuffer + writeOffset);
-                                writeOffset += sizeof(vnetWriteHeader);
+                                writeOffset += toWire(vnetWriteHeader, writeBuffer + writeOffset);
                             }
                             else
                             {
@@ -155,16 +173,12 @@ int main()
                                 constexpr auto cNumBuffers{1};
                                 VnetHeader vnetTcpHeader{VnetFlag::NeedsChecksum, GenericSegmentOffloadType::TcpIp4, cHeaderLength, cGsoSize,
                                                          cChecksumStart, cChecksumOffset, cNumBuffers};
-                                toWire(vnetTcpHeader, writeBuffer + writeOffset);
-                                writeOffset += sizeof(vnetTcpHeader);
+                                writeOffset += toWire(vnetTcpHeader, writeBuffer + writeOffset);
                             }
 
-                            toWire(ethernetResponseHeader, writeBuffer + writeOffset);
-                            writeOffset += sizeof(ethernetResponseHeader);
-                            toWire(ipResponseHeader, writeBuffer + writeOffset);
-                            writeOffset += sizeof(ipResponseHeader);
-                            toWire(*response, writeBuffer + writeOffset);
-                            writeOffset += sizeof(*response);
+                            writeOffset += toWire(ethernetResponseHeader, writeBuffer + writeOffset);
+                            writeOffset += toWire(ipResponseHeader, writeBuffer + writeOffset);
+                            writeOffset += toWire(*response, writeBuffer + writeOffset);
                         }
                     }
                     default:
@@ -191,19 +205,15 @@ int main()
                 {
                     std::println("Arp Response: Header {}, Body {}", arpResponse->mHeader, arpResponse->mBody);
 
-                    toWire(vnetWriteHeader, writeBuffer + writeOffset);
-                    writeOffset += sizeof(vnetWriteHeader);
+                    writeOffset += toWire(vnetWriteHeader, writeBuffer + writeOffset);
 
                     auto ethernetResponseHeader{ethernetHeader};
                     std::swap(ethernetResponseHeader.mSourceMacAddress, ethernetResponseHeader.mDestinationMacAddress);
-                    toWire(ethernetResponseHeader, writeBuffer + writeOffset);
-                    writeOffset += sizeof(ethernetResponseHeader);
+                    writeOffset += toWire(ethernetResponseHeader, writeBuffer + writeOffset);
 
-                    toWire(arpResponse->mHeader, writeBuffer + writeOffset);
-                    writeOffset += sizeof(arpResponse->mHeader);
+                    writeOffset += toWire(arpResponse->mHeader, writeBuffer + writeOffset);
 
-                    toWire(arpResponse->mBody, writeBuffer + writeOffset);
-                    writeOffset += sizeof(arpResponse->mBody);
+                    writeOffset += toWire(arpResponse->mBody, writeBuffer + writeOffset);
                 }
             }
             default:

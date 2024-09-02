@@ -3,6 +3,7 @@
 #include <Headers.hpp>
 #include <Types.hpp>
 #include <Ip.hpp>
+#include <TcpOptions.hpp>
 
 #include <cstddef>
 #include <cstdint>
