@@ -54,13 +54,13 @@ struct TapDevice
             exit(1);
         }
 
-        std::uint32_t offsetFlags = TUN_F_CSUM | TUN_F_TSO4 | TUN_F_TSO6;
-        if (ioctl(mFileDescriptor, TUNSETOFFLOAD, offsetFlags) < 0)
-        {
-            std::println("Failed to set tap device offset flags: {}", strerror(errno));
-            close(mFileDescriptor);
-            exit(1);
-        }
+        // std::uint32_t offsetFlags = TUN_F_CSUM | TUN_F_TSO4 | TUN_F_TSO6;
+        // if (ioctl(mFileDescriptor, TUNSETOFFLOAD, offsetFlags) < 0)
+        // {
+        //     std::println("Failed to set tap device offset flags: {}", strerror(errno));
+        //     close(mFileDescriptor);
+        //     exit(1);
+        // }
 
         mName = std::string{interfaceConfig.ifr_name};
     }

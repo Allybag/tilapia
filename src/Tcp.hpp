@@ -133,8 +133,9 @@ struct LayoutInfo<TcpPseudoPacket>
 
 inline std::uint16_t tcp_checksum(const TcpPseudoPacket& header, std::span<TcpOption> options, std::span<char> payload)
 {
-    auto header_checksum_negated = checksum(header);
-    auto header_checksum_network_byte_order = std::byteswap(~header_checksum_negated);
+    std::uint16_t header_checksum_negated = checksum(header);
+    std::uint16_t header_checksum = ~header_checksum_negated;
+    std::uint16_t header_checksum_network_byte_order = std::byteswap(header_checksum);
 
     static constexpr auto cOptionBufferSize{60};
     char optionBuffer[cOptionBufferSize];
@@ -144,10 +145,10 @@ inline std::uint16_t tcp_checksum(const TcpPseudoPacket& header, std::span<TcpOp
         optionWriteIndex += toWire(option, optionBuffer + optionWriteIndex);
     }
 
-    auto options_checksum_negated_nbo = checksum(header_checksum_network_byte_order, optionBuffer, optionWriteIndex);
-    auto options_checksum_nbo = ~options_checksum_negated_nbo;
+    std::uint16_t options_checksum_negated_nbo = checksum(header_checksum_network_byte_order, optionBuffer, optionWriteIndex);
+    std::uint16_t options_checksum_nbo = ~options_checksum_negated_nbo;
 
-    auto payload_checksum_nbo = checksum(options_checksum_nbo, payload.data(), payload.size());
+    std::uint16_t payload_checksum_nbo = checksum(options_checksum_nbo, payload.data(), payload.size());
     return std::byteswap(payload_checksum_nbo);
 }
 

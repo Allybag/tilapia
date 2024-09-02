@@ -150,14 +150,14 @@ int main()
                         }
 
                         auto payload = std::span<char>{readBuffer + readOffset, packetEndOffset - readOffset};
-                        std::println("Received TCP Payload: {}", payload);
+                        std::println("Received TCP Payload: {}", payload.data());
 
 
                         std::uint8_t zero{0};
-                        TcpPseudoHeader pseudoReadHeader{ipHeader.mSourceAddress, ipHeader.mDestinationAddress, zero, IPProtocol::TCP, tcpHeader.length()};
+                        TcpPseudoHeader pseudoReadHeader{ipHeader.mSourceAddress, ipHeader.mDestinationAddress, zero, IPProtocol::TCP, static_cast<std::uint16_t>(tcpHeader.length() * cLengthUnits + payload.size())};
                         TcpPseudoPacket pseudoReadPacket{pseudoReadHeader, tcpHeader};
                         auto read_checksum = tcp_checksum(pseudoReadPacket, options, payload);
-                        std::println("TCP Receive checksum {} vs calculated {}", tcpHeader.checksum(), read_checksum);
+                        std::println("TCP Receive checksum 0x{:x} vs calculated 0x{:x}", tcpHeader.checksum(), read_checksum);
 
                         auto [nodeIt, inserted] = tcpNodes.try_emplace(tcpHeader.mDestinationPort, tcpHeader.mDestinationPort, tcpHeader.mSourcePort);
                         auto response = nodeIt->second.onMessage(tcpHeader);
