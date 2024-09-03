@@ -9,9 +9,48 @@
 #include <bit>
 #include <iostream>
 #include <iomanip>
+#include <numeric>
 #include <print>
 #include <string_view>
 #include <vector>
+
+struct FrameSection
+{
+    std::size_t size{};
+    std::string name{};
+    std::string_view payload{};
+};
+
+std::string print(std::vector<FrameSection> sections)
+{
+    std::size_t size = std::accumulate(sections.begin(), sections.end(), 0, [](std::size_t running_sum, const FrameSection& it) { return running_sum + it.size; });
+    std::string dashes(size, '-');
+    std::string line{};
+    for (const auto& section : sections)
+    {
+        std::string segment{};
+        segment.append("|");
+        segment.append(section.name);
+
+        if (section.payload.size())
+        {
+            segment.append(": ");
+            segment.append(section.payload);
+        }
+
+        auto fill_count = section.size - segment.size();
+        if (fill_count < 0)
+        {
+            throw std::runtime_error{"Cannot print section"};
+        }
+
+        segment.append(std::string(fill_count, ' '));
+        line.append(segment);
+    }
+
+    return std::format("{}\n{}\n{}", dashes, line, dashes);
+}
+
 
 int main()
 {
@@ -79,10 +118,11 @@ int main()
             std::println("Received a virtual network header, size {}, {}", bytesRead, vnetHeader);
         }
 
+        std::vector<FrameSection> sections{};
         auto ethernetHeader = fromWire<EthernetHeader>(readBuffer + readOffset);
         readOffset += sizeof(ethernetHeader);
+        sections.emplace_back(FrameSection{sizeof(ethernetHeader), "Ethernet", {}});
 
-        std::println("Received a message of size {}, Ethernet Header: {}", bytesRead, ethernetHeader);
         switch(ethernetHeader.mEthertype)
         {
             case EtherType::InternetProtocolVersion4:
@@ -90,7 +130,7 @@ int main()
                 auto ipHeader = fromWire<IpV4Header>(readBuffer + readOffset);
                 auto packetEndOffset = readOffset + ipHeader.mTotalLength;
                 readOffset += sizeof(ipHeader);
-                std::println("{}, checksum 0x{:x}", ipHeader, checksum(ipHeader));
+                sections.emplace_back(FrameSection{sizeof(ipHeader), "IPv4", {}});
                 std::size_t myHeaderLen{ipHeader.mVersionLength.mLength};
                 if (myHeaderLen != 5)
                 {
@@ -103,7 +143,7 @@ int main()
                     {
                         auto icmpHeader = fromWire<IcmpV4Header>(readBuffer + readOffset);
                         readOffset += sizeof(icmpHeader);
-                        std::println("{}", icmpHeader);
+                        sections.emplace_back(FrameSection{sizeof(icmpHeader), "ICMP", {}});
                         if (icmpHeader.mType != IcmpType::EchoRequest)
                         {
                             break;
@@ -111,7 +151,7 @@ int main()
 
                         auto icmpEcho = fromWire<IcmpV4Echo>(readBuffer + readOffset);
                         readOffset += sizeof(icmpEcho);
-                        std::println("{}", icmpEcho);
+                        sections.emplace_back(FrameSection{sizeof(icmpEcho), "Echo", {}});
 
                         IcmpV4EchoResponse response{icmpHeader, icmpEcho};
                         response.mHeader.mType = IcmpType::EchoReply;
@@ -134,7 +174,7 @@ int main()
                     {
                         auto tcpHeader = fromWire<TcpHeader>(readBuffer + readOffset);
                         readOffset += sizeof(tcpHeader);
-                        std::println("{}", tcpHeader);
+                        sections.emplace_back(FrameSection{sizeof(tcpHeader), "TCP", {}});
                         std::vector<TcpOption> options{};
                         static constexpr auto cLengthUnits{4};
                         auto endOfOptions = readOffset + ((tcpHeader.length() * cLengthUnits) - sizeof(TcpHeader));
@@ -165,7 +205,7 @@ int main()
                         }
 
                         auto payload = std::string_view{readBuffer + readOffset, packetEndOffset - readOffset};
-                        std::println("Received TCP Payload: {}", payload);
+                        sections.emplace_back(FrameSection{sizeof(tcpHeader), "TCP", payload});
 
                         std::uint8_t zero{0};
                         TcpPseudoHeader pseudoReadHeader{ipHeader.mSourceAddress, ipHeader.mDestinationAddress, zero, IPProtocol::TCP, static_cast<std::uint16_t>(tcpHeader.length() * cLengthUnits + payload.size())};
@@ -208,7 +248,6 @@ int main()
                             }
                             else
                             {
-                                
                                 TcpPseudoPacket pseudoPacket{pseudoHeader, *response};
                                 response->mCheckSum = checksum(pseudoPacket);
                                 writeOffset += writeVnetHeader();
@@ -228,7 +267,7 @@ int main()
             {
                 auto arpHeader = fromWire<ArpHeader>(readBuffer + readOffset);
                 readOffset += sizeof(arpHeader);
-                std::println("{}", arpHeader);
+                sections.emplace_back(FrameSection{sizeof(arpHeader), "ARP", {}});
                 if (arpHeader.mProtocolType != ArpProtoType::InternetProtocolVersion4)
                 {
                     continue;
@@ -236,7 +275,7 @@ int main()
 
                 auto arpIpBody = fromWire<ArpIpBody>(readBuffer + readOffset);
                 readOffset += sizeof(arpIpBody);
-                std::println("{}", arpIpBody);
+                sections.emplace_back(FrameSection{sizeof(arpIpBody), "ARP IP", {}});
 
                 auto arpResponse = arpNode.onMessage({arpHeader, arpIpBody});
                 if (arpResponse.has_value())
@@ -256,6 +295,7 @@ int main()
                 break;
         }
 
+        std::println("{}", print(sections));
         if (writeOffset != 0)
         {
             int bytesWritten= write(tap.descriptor(), writeBuffer, writeOffset);
