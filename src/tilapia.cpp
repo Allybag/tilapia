@@ -160,7 +160,7 @@ int main()
                         std::println("TCP Receive checksum 0x{:x} vs calculated 0x{:x}", tcpHeader.checksum(), read_checksum);
 
                         auto [nodeIt, inserted] = tcpNodes.try_emplace(tcpHeader.mDestinationPort, tcpHeader.mDestinationPort, tcpHeader.mSourcePort);
-                        auto response = nodeIt->second.onMessage(tcpHeader);
+                        auto response = nodeIt->second.onMessage(tcpHeader, payload.size());
                         if (response.has_value())
                         {
                             std::println("{}", *response);

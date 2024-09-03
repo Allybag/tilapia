@@ -211,27 +211,38 @@ class TcpNode
 public:
     TcpNode(Port port, Port remotePort) : mPort{port}, mRemotePort{remotePort} { }
 
-    std::optional<TcpHeader> onMessage(const TcpHeader& header)
+    std::optional<TcpHeader> onMessage(const TcpHeader& header, std::size_t payload_size)
     {
+        TcpHeader result{header};
+        std::swap(result.mSourcePort, result.mDestinationPort);
+        result.mSequenceNumber = mSequenceNumber;
+        result.mCheckSum = 0;
+        result.setLength(5);
+        result.mFlags.mValue = std::to_underlying(TcpFlag::Ack);
+        result.mAcknowledgementNumber = header.mSequenceNumber + payload_size;
+
         if (header.mFlags.set(TcpFlag::Syn))
         {
-            TcpHeader result{header};
-            std::swap(result.mSourcePort, result.mDestinationPort);
-            result.mAcknowledgementNumber = header.mSequenceNumber + 1;
+            assert(payload_size == 0);
+            result.mFlags = result.mFlags | TcpFlag::Syn;
             result.mSequenceNumber = mSequenceNumber++;
-            result.mFlags = (result.mFlags | TcpFlag::Ack);
-            result.mCheckSum = 0;
-            result.setLength(5);
-
-            return result;
+            result.mAcknowledgementNumber = header.mSequenceNumber + 1;
         }
 
-        return std::nullopt;
+        if (mLastAcked == result.mAcknowledgementNumber)
+        {
+            // Already acknowledged all received data
+            return std::nullopt;
+        }
+
+        mLastAcked = result.mAcknowledgementNumber;
+        return result;
     }
 
 private:
     Port mPort;
     Port mRemotePort;
     SequenceNumber mSequenceNumber{8000};
+    SequenceNumber mLastAcked{0};
 };
 
