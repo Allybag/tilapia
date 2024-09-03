@@ -9,6 +9,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <span>
+#include <string_view>>
 
 enum class TcpFlag : std::uint8_t
 {
@@ -131,7 +132,7 @@ struct LayoutInfo<TcpPseudoPacket>
     static constexpr std::index_sequence<4, 4, 1, 1, 2, 2, 2, 4, 4, 1, 1, 2, 2, 2> Sizes{};
 };
 
-inline std::uint16_t tcp_checksum(const TcpPseudoPacket& header, std::span<TcpOption> options, std::span<char> payload)
+inline std::uint16_t tcp_checksum(const TcpPseudoPacket& header, std::span<TcpOption> options, std::string_view payload)
 {
     std::uint16_t header_checksum_negated = checksum(header);
     std::uint16_t header_checksum = ~header_checksum_negated;

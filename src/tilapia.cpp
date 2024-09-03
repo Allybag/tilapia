@@ -10,6 +10,7 @@
 #include <iostream>
 #include <iomanip>
 #include <print>
+#include <string_view>
 #include <vector>
 
 int main()
@@ -149,9 +150,8 @@ int main()
                             throw std::runtime_error{"Read past end of packet"};
                         }
 
-                        auto payload = std::span<char>{readBuffer + readOffset, packetEndOffset - readOffset};
-                        std::println("Received TCP Payload: {}", payload.data());
-
+                        auto payload = std::string_view{readBuffer + readOffset, packetEndOffset - readOffset};
+                        std::println("Received TCP Payload: {}", payload);
 
                         std::uint8_t zero{0};
                         TcpPseudoHeader pseudoReadHeader{ipHeader.mSourceAddress, ipHeader.mDestinationAddress, zero, IPProtocol::TCP, static_cast<std::uint16_t>(tcpHeader.length() * cLengthUnits + payload.size())};
