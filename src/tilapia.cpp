@@ -157,7 +157,12 @@ int main()
                         TcpPseudoHeader pseudoReadHeader{ipHeader.mSourceAddress, ipHeader.mDestinationAddress, zero, IPProtocol::TCP, static_cast<std::uint16_t>(tcpHeader.length() * cLengthUnits + payload.size())};
                         TcpPseudoPacket pseudoReadPacket{pseudoReadHeader, tcpHeader};
                         auto read_checksum = tcp_checksum(pseudoReadPacket, options, payload);
-                        std::println("TCP Receive checksum 0x{:x} vs calculated 0x{:x}", tcpHeader.checksum(), read_checksum);
+                        std::println("TCP Receive checksum 0x{:x} vs calculated 0x{:x}, mod three {}", tcpHeader.checksum(), read_checksum, read_checksum % 3);
+                        if (read_checksum != tcpHeader.checksum() || (read_checksum % 3 == 1))
+                        {
+                            std::println("Bad checksum, will not Acknowledge");
+                            continue;
+                        }
 
                         auto [nodeIt, inserted] = tcpNodes.try_emplace(tcpHeader.mDestinationPort, tcpHeader.mDestinationPort, tcpHeader.mSourcePort);
                         auto response = nodeIt->second.onMessage(tcpHeader, payload.size());
