@@ -9,7 +9,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <span>
-#include <string_view>>
+#include <string_view>
 
 enum class TcpFlag : std::uint8_t
 {

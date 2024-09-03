@@ -22,7 +22,7 @@
 
 struct TapDevice
 {
-    explicit TapDevice(std::string name = "Tilapia")
+    explicit TapDevice(bool enableVnetHeader = false, std::string name = "Tilapia")
     {
         mFileDescriptor = open(cTunnelTapDevicePath, O_RDWR); 
         if (mFileDescriptor < 0)
@@ -32,12 +32,17 @@ struct TapDevice
         }
 
         struct ifreq interfaceConfig{};
+        strncpy(interfaceConfig.ifr_name, name.c_str(), IFNAMSIZ);
         // IFF_TUN      : TUN Device
         // IFF_TAP      : TAP Device
         // IFF_NO_PI    : No Packet Information
         // IFF_VNET_HDR : Prepend Ethernet frame with VNET Header
-        interfaceConfig.ifr_flags = IFF_TAP | IFF_NO_PI | IFF_VNET_HDR;
-        strncpy(interfaceConfig.ifr_name, name.c_str(), IFNAMSIZ);
+        interfaceConfig.ifr_flags = IFF_TAP | IFF_NO_PI;
+        if (enableVnetHeader)
+        {
+            interfaceConfig.ifr_flags |=  IFF_VNET_HDR;
+        }
+
 
         if (ioctl(mFileDescriptor, TUNSETIFF, static_cast<void*>(&interfaceConfig)) < 0)
         {
@@ -46,21 +51,25 @@ struct TapDevice
             exit(1);
         }
 
-        int vnetHeaderSize{12};
-        if (ioctl(mFileDescriptor, TUNSETVNETHDRSZ, &vnetHeaderSize) < 0)
+        if (enableVnetHeader)
         {
-            std::println("Failed to set VNET header size : {}", strerror(errno));
-            close(mFileDescriptor);
-            exit(1);
-        }
+            std::println("Will be reading and writing virtual network header on all frames");
+            int vnetHeaderSize{12};
+            if (ioctl(mFileDescriptor, TUNSETVNETHDRSZ, &vnetHeaderSize) < 0)
+            {
+                std::println("Failed to set VNET header size : {}", strerror(errno));
+                close(mFileDescriptor);
+                exit(1);
+            }
 
-        // std::uint32_t offsetFlags = TUN_F_CSUM | TUN_F_TSO4 | TUN_F_TSO6;
-        // if (ioctl(mFileDescriptor, TUNSETOFFLOAD, offsetFlags) < 0)
-        // {
-        //     std::println("Failed to set tap device offset flags: {}", strerror(errno));
-        //     close(mFileDescriptor);
-        //     exit(1);
-        // }
+            std::uint32_t offsetFlags = TUN_F_CSUM | TUN_F_TSO4 | TUN_F_TSO6;
+            if (ioctl(mFileDescriptor, TUNSETOFFLOAD, offsetFlags) < 0)
+            {
+                std::println("Failed to set tap device offset flags: {}", strerror(errno));
+                close(mFileDescriptor);
+                exit(1);
+            }
+        }
 
         mName = std::string{interfaceConfig.ifr_name};
     }

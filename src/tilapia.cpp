@@ -25,7 +25,8 @@ int main()
         return 1;
     }
 
-    TapDevice tap{};
+    static constexpr bool cEnableVnetHeader = false;
+    TapDevice tap{cEnableVnetHeader};
     std::println("Created tap device {} : descriptor {}", tap.name(), tap.descriptor());
 
     // We do not set these yet, except for with ip command line tool
@@ -40,10 +41,7 @@ int main()
 
     char readBuffer[2000];
     char writeBuffer[2000];
-    VnetFlag mFlag;
-    GenericSegmentOffloadType mGsoType;
-    VnetHeader vnetWriteHeader{ VnetFlag::ChecksumValid, GenericSegmentOffloadType::None, 0, 0, 0, 0, 1};
-    std::println("Will be writing virtual network header to all frames: {}", vnetWriteHeader);
+
     while (messagesRemaining)
     {
         int bytesRead = read(tap.descriptor(), readBuffer, sizeof(readBuffer));
@@ -61,9 +59,25 @@ int main()
         std::size_t readOffset{0};
         std::size_t writeOffset{0};
 
-        auto vnetHeader = fromWire<VnetHeader>(readBuffer);
-        readOffset += sizeof(vnetHeader);
-        std::println("Received a virtual network header, size {}, {}", bytesRead, vnetHeader);
+        auto writeVnetHeader = [&writeBuffer, &writeOffset]() -> std::size_t
+        {
+            if constexpr (!cEnableVnetHeader)
+            {
+                return 0;
+            }
+
+            VnetFlag mFlag;
+            GenericSegmentOffloadType mGsoType;
+            VnetHeader vnetWriteHeader{ VnetFlag::ChecksumValid, GenericSegmentOffloadType::None, 0, 0, 0, 0, 1};
+            return toWire(vnetWriteHeader, writeBuffer + writeOffset);
+        };
+
+        if constexpr (cEnableVnetHeader)
+        {
+            auto vnetHeader = fromWire<VnetHeader>(readBuffer);
+            readOffset += sizeof(vnetHeader);
+            std::println("Received a virtual network header, size {}, {}", bytesRead, vnetHeader);
+        }
 
         auto ethernetHeader = fromWire<EthernetHeader>(readBuffer + readOffset);
         readOffset += sizeof(ethernetHeader);
@@ -110,7 +124,7 @@ int main()
                         auto ethernetResponseHeader{ethernetHeader};
                         std::swap(ethernetResponseHeader.mSourceMacAddress, ethernetResponseHeader.mDestinationMacAddress);
 
-                        writeOffset += toWire(vnetWriteHeader, writeBuffer + writeOffset);
+                        writeOffset += writeVnetHeader();
                         writeOffset += toWire(ethernetResponseHeader, writeBuffer + writeOffset);
                         writeOffset += toWire(ipResponseHeader, writeBuffer + writeOffset);
                         writeOffset += toWire(response, writeBuffer + writeOffset);
@@ -157,10 +171,10 @@ int main()
                         TcpPseudoHeader pseudoReadHeader{ipHeader.mSourceAddress, ipHeader.mDestinationAddress, zero, IPProtocol::TCP, static_cast<std::uint16_t>(tcpHeader.length() * cLengthUnits + payload.size())};
                         TcpPseudoPacket pseudoReadPacket{pseudoReadHeader, tcpHeader};
                         auto read_checksum = tcp_checksum(pseudoReadPacket, options, payload);
-                        std::println("TCP Receive checksum 0x{:x} vs calculated 0x{:x}, mod three {}", tcpHeader.checksum(), read_checksum, read_checksum % 3);
-                        if (read_checksum != tcpHeader.checksum() || (read_checksum % 3 == 1))
+                        std::println("TCP Receive checksum 0x{:x} vs calculated 0x{:x}", tcpHeader.checksum(), read_checksum);
+                        if (read_checksum != tcpHeader.checksum())
                         {
-                            std::println("Bad checksum, will not Acknowledge");
+                            std::println("Bad checksum, will not Ack");
                             continue;
                         }
 
@@ -179,15 +193,10 @@ int main()
                             ipResponseHeader.mCheckSum = checksum(ipResponseHeader);
 
                             TcpPseudoHeader pseudoHeader{ipResponseHeader.mSourceAddress, ipResponseHeader.mDestinationAddress, zero, IPProtocol::TCP, sizeof(TcpHeader)};
-                            static constexpr auto cSoftwareTcpChecksums = true;
-                            if constexpr (cSoftwareTcpChecksums)
+                            static constexpr auto cHardwareChecksums = false;
+                            if constexpr (cHardwareChecksums)
                             {
-                                TcpPseudoPacket pseudoPacket{pseudoHeader, *response};
-                                response->mCheckSum = checksum(pseudoPacket);
-                                writeOffset += toWire(vnetWriteHeader, writeBuffer + writeOffset);
-                            }
-                            else
-                            {
+                                static_assert(cHardwareChecksums == cEnableVnetHeader, "Cannot enable hardeware checksum without virtual network header");
                                 constexpr auto cHeaderLength{sizeof(EthernetHeader) + sizeof(IpV4Header) + sizeof(TcpHeader)};
                                 constexpr auto cGsoSize{1440};
                                 constexpr auto cChecksumStart{sizeof(EthernetHeader) + sizeof(IpV4Header)};
@@ -196,6 +205,13 @@ int main()
                                 VnetHeader vnetTcpHeader{VnetFlag::NeedsChecksum, GenericSegmentOffloadType::TcpIp4, cHeaderLength, cGsoSize,
                                                          cChecksumStart, cChecksumOffset, cNumBuffers};
                                 writeOffset += toWire(vnetTcpHeader, writeBuffer + writeOffset);
+                            }
+                            else
+                            {
+                                
+                                TcpPseudoPacket pseudoPacket{pseudoHeader, *response};
+                                response->mCheckSum = checksum(pseudoPacket);
+                                writeOffset += writeVnetHeader();
                             }
 
                             writeOffset += toWire(ethernetResponseHeader, writeBuffer + writeOffset);
@@ -227,14 +243,12 @@ int main()
                 {
                     std::println("Arp Response: Header {}, Body {}", arpResponse->mHeader, arpResponse->mBody);
 
-                    writeOffset += toWire(vnetWriteHeader, writeBuffer + writeOffset);
-
                     auto ethernetResponseHeader{ethernetHeader};
                     std::swap(ethernetResponseHeader.mSourceMacAddress, ethernetResponseHeader.mDestinationMacAddress);
+
+                    writeOffset += writeVnetHeader();
                     writeOffset += toWire(ethernetResponseHeader, writeBuffer + writeOffset);
-
                     writeOffset += toWire(arpResponse->mHeader, writeBuffer + writeOffset);
-
                     writeOffset += toWire(arpResponse->mBody, writeBuffer + writeOffset);
                 }
             }
