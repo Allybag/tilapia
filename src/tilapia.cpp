@@ -6,7 +6,9 @@
 #include <Tcp.hpp>
 #include <Vnet.hpp>
 
+#include <atomic>
 #include <bit>
+#include <csignal>
 #include <iostream>
 #include <iomanip>
 #include <numeric>
@@ -62,6 +64,24 @@ std::string print(const FrameSections& sections)
     return std::format("{}\n{}|\n{}", dashes, line, dashes);
 }
 
+namespace sig
+{
+inline volatile std::sig_atomic_t gPrintPackets;
+inline volatile std::sig_atomic_t gWritePackets;
+}
+
+inline void signal_handler(int signal)
+{
+    if (signal == SIGUSR1)
+    {
+        sig::gPrintPackets = !sig::gPrintPackets;
+    }
+    else if (signal == SIGUSR2)
+    {
+        sig::gWritePackets = !sig::gWritePackets;
+    }
+}
+
 
 int main()
 {
@@ -74,6 +94,11 @@ int main()
         std::println("Host is not little endian, disaster!");
         return 1;
     }
+
+    sig::gPrintPackets = true;
+    sig::gWritePackets = true;
+    std::signal(SIGUSR1, signal_handler);
+    std::signal(SIGUSR2, signal_handler);
 
     static constexpr bool cEnableVnetHeader = false;
     TapDevice tap{cEnableVnetHeader};
@@ -301,16 +326,19 @@ int main()
                 break;
         }
 
-        auto sectionsSize = totalSize(sections);
-        if (bytesRead > sectionsSize)
+        if (sig::gPrintPackets)
         {
-            static constexpr auto cMaxUnknownSectionSize{80};
-            auto size = std::min<std::size_t>(cMaxUnknownSectionSize, bytesRead - sectionsSize);
-            sections.emplace_back(FrameSection{size, "Unknown", {}});
+            auto sectionsSize = totalSize(sections);
+            if (bytesRead > sectionsSize)
+            {
+                static constexpr auto cMaxUnknownSectionSize{80};
+                auto size = std::min<std::size_t>(cMaxUnknownSectionSize, bytesRead - sectionsSize);
+                sections.emplace_back(FrameSection{size, "Unknown", {}});
+            }
+            std::println("{}", print(sections));
         }
 
-        std::println("{}", print(sections));
-        if (writeOffset != 0)
+        if (sig::gWritePackets && writeOffset != 0)
         {
             int bytesWritten= write(tap.descriptor(), writeBuffer, writeOffset);
             if (bytesWritten != writeOffset)
