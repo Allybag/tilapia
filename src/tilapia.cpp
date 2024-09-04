@@ -18,7 +18,7 @@ struct FrameSection
 {
     std::size_t size{};
     std::string name{};
-    std::string_view payload{};
+    std::string payload{};
 };
 
 std::string print(std::vector<FrameSection> sections)
@@ -38,10 +38,11 @@ std::string print(std::vector<FrameSection> sections)
             segment.append(section.payload);
         }
 
-        auto fill_count = section.size - segment.size();
+        int fill_count = section.size - segment.size();
         if (fill_count < 0)
         {
-            throw std::runtime_error{"Cannot print section"};
+            std::println("Cannot print section {}, size {}", section.name, section.size);
+            continue;
         }
 
         segment.append(std::string(fill_count, ' '));
@@ -172,9 +173,9 @@ int main()
                     }
                     case IPProtocol::TCP:
                     {
+                        auto segmentStartOffset = readOffset;
                         auto tcpHeader = fromWire<TcpHeader>(readBuffer + readOffset);
                         readOffset += sizeof(tcpHeader);
-                        sections.emplace_back(FrameSection{sizeof(tcpHeader), "TCP", {}});
                         std::vector<TcpOption> options{};
                         static constexpr auto cLengthUnits{4};
                         auto endOfOptions = readOffset + ((tcpHeader.length() * cLengthUnits) - sizeof(TcpHeader));
@@ -205,7 +206,7 @@ int main()
                         }
 
                         auto payload = std::string_view{readBuffer + readOffset, packetEndOffset - readOffset};
-                        sections.emplace_back(FrameSection{sizeof(tcpHeader), "TCP", payload});
+                        sections.emplace_back(FrameSection{packetEndOffset - segmentStartOffset, "TCP", std::string(payload)});
 
                         std::uint8_t zero{0};
                         TcpPseudoHeader pseudoReadHeader{ipHeader.mSourceAddress, ipHeader.mDestinationAddress, zero, IPProtocol::TCP, static_cast<std::uint16_t>(tcpHeader.length() * cLengthUnits + payload.size())};
