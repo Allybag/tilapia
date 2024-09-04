@@ -19,12 +19,20 @@ struct FrameSection
     std::size_t size{};
     std::string name{};
     std::string payload{};
+
 };
 
-std::string print(std::vector<FrameSection> sections)
+using FrameSections = std::vector<FrameSection>;
+
+std::size_t totalSize(const FrameSections& sections)
 {
-    std::size_t size = std::accumulate(sections.begin(), sections.end(), 0, [](std::size_t running_sum, const FrameSection& it) { return running_sum + it.size; });
-    std::string dashes(size, '-');
+    return std::accumulate(sections.begin(), sections.end(), 0, [](std::size_t sum, const FrameSection& it) { return sum + it.size; });
+}
+
+std::string print(const FrameSections& sections)
+{
+    auto size = totalSize(sections);
+    std::string dashes(size + 1, '-');
     std::string line{};
     for (const auto& section : sections)
     {
@@ -36,6 +44,8 @@ std::string print(std::vector<FrameSection> sections)
         {
             segment.append(": ");
             segment.append(section.payload);
+            // We don't want any newlines in our output
+            segment.erase(std::remove(segment.begin(), segment.end(), '\n'), segment.cend());
         }
 
         int fill_count = section.size - segment.size();
@@ -49,7 +59,7 @@ std::string print(std::vector<FrameSection> sections)
         line.append(segment);
     }
 
-    return std::format("{}\n{}\n{}", dashes, line, dashes);
+    return std::format("{}\n{}|\n{}", dashes, line, dashes);
 }
 
 
@@ -119,7 +129,7 @@ int main()
             std::println("Received a virtual network header, size {}, {}", bytesRead, vnetHeader);
         }
 
-        std::vector<FrameSection> sections{};
+        FrameSections sections{};
         auto ethernetHeader = fromWire<EthernetHeader>(readBuffer + readOffset);
         readOffset += sizeof(ethernetHeader);
         sections.emplace_back(FrameSection{sizeof(ethernetHeader), "Ethernet", {}});
@@ -294,6 +304,14 @@ int main()
             }
             default:
                 break;
+        }
+
+        auto sectionsSize = totalSize(sections);
+        if (bytesRead > sectionsSize)
+        {
+            static constexpr auto cMaxUnknownSectionSize{80};
+            auto size = std::min<std::size_t>(cMaxUnknownSectionSize, bytesRead - sectionsSize);
+            sections.emplace_back(FrameSection{bytesRead - sectionsSize, "Unknown", {}});
         }
 
         std::println("{}", print(sections));
