@@ -148,7 +148,6 @@ std::size_t toWire(const TcpOption& option, char* buffer)
         case TcpOptionType::SelectiveAcknowledgementPermitted:
         case TcpOptionType::FastOpen:
             assert(option.mSize == 2);
-            std::println("Warning: Writing unsupported TCP Option: {}", std::to_underlying(option.mType));
             return writePointer - buffer;
         case TcpOptionType::WindowScale:
             assert(option.mSize == 3);

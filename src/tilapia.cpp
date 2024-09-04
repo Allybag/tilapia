@@ -145,9 +145,9 @@ int main()
                 std::size_t myHeaderLen{ipHeader.mVersionLength.mLength};
                 if (myHeaderLen != 5)
                 {
-                    std::println("Received an IP Header of length {}", myHeaderLen);
                     break;
                 }
+
                 switch(ipHeader.mProto)
                 {
                     case IPProtocol::ICMP:
@@ -203,11 +203,6 @@ int main()
                             throw std::runtime_error{"Read too many TCP options"};
                         }
 
-                        for (const auto& option : options)
-                        {
-                            std::println("TcpOption: {}", option);
-                        }
-
                         if (readOffset > packetEndOffset)
                         {
                             std::println("Read offset {} past packet end offset", readOffset, packetEndOffset);
@@ -222,10 +217,9 @@ int main()
                         TcpPseudoHeader pseudoReadHeader{ipHeader.mSourceAddress, ipHeader.mDestinationAddress, zero, IPProtocol::TCP, static_cast<std::uint16_t>(tcpHeader.length() * cLengthUnits + payload.size())};
                         TcpPseudoPacket pseudoReadPacket{pseudoReadHeader, tcpHeader};
                         auto read_checksum = tcp_checksum(pseudoReadPacket, options, payload);
-                        std::println("TCP Receive checksum 0x{:x} vs calculated 0x{:x}", tcpHeader.checksum(), read_checksum);
                         if (read_checksum != tcpHeader.checksum())
                         {
-                            std::println("Bad checksum, will not Ack");
+                            std::println("TCP calculated checksum 0x{:x} does not match received 0x{:x}, will not Ack", tcpHeader.checksum(), read_checksum);
                             continue;
                         }
 
@@ -233,7 +227,10 @@ int main()
                         auto response = nodeIt->second.onMessage(tcpHeader, payload.size());
                         if (response.has_value())
                         {
-                            std::println("{}", *response);
+                            if (payload.size())
+                            {
+                                std::print("{}", payload);
+                            }
 
                             auto ethernetResponseHeader{ethernetHeader};
                             std::swap(ethernetResponseHeader.mSourceMacAddress, ethernetResponseHeader.mDestinationMacAddress);
@@ -291,8 +288,6 @@ int main()
                 auto arpResponse = arpNode.onMessage({arpHeader, arpIpBody});
                 if (arpResponse.has_value())
                 {
-                    std::println("Arp Response: Header {}, Body {}", arpResponse->mHeader, arpResponse->mBody);
-
                     auto ethernetResponseHeader{ethernetHeader};
                     std::swap(ethernetResponseHeader.mSourceMacAddress, ethernetResponseHeader.mDestinationMacAddress);
 
@@ -311,7 +306,7 @@ int main()
         {
             static constexpr auto cMaxUnknownSectionSize{80};
             auto size = std::min<std::size_t>(cMaxUnknownSectionSize, bytesRead - sectionsSize);
-            sections.emplace_back(FrameSection{bytesRead - sectionsSize, "Unknown", {}});
+            sections.emplace_back(FrameSection{size, "Unknown", {}});
         }
 
         std::println("{}", print(sections));
@@ -322,7 +317,6 @@ int main()
             {
                 std::println("Write failure! Only wrote {} out of {} bytes", bytesWritten, writeOffset);
             }
-            std::println("Wrote a message of size {}", writeOffset);
         }
 
         std::cout << std::flush;
