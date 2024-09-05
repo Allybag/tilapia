@@ -334,9 +334,9 @@ int main()
             auto sectionsSize = totalSize(sections);
             if (bytesRead > sectionsSize)
             {
-                static constexpr auto cMaxUnknownSectionSize{80};
-                auto size = std::min<std::size_t>(cMaxUnknownSectionSize, bytesRead - sectionsSize);
-                sections.emplace_back(FrameSection{size, "Unknown", {}});
+                static constexpr auto cMaxIgnoredSectionSize{80};
+                auto size = std::min<std::size_t>(cMaxIgnoredSectionSize, bytesRead - sectionsSize);
+                sections.emplace_back(FrameSection{size, "Ignored", {}});
             }
             std::println("{}", print(sections));
         }
