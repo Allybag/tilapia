@@ -66,3 +66,15 @@ This is all done invisibly to the layers above.
 ## Layers 5 - 7
 These upper layers are also pretty vague, and we will also ignore them.
 
+
+# Tilapia
+
+The goal of this TCP stack is to show what is happening behind the scenes.
+Tilapia will by default print a representation of the network protocols it receives.
+
+We can toggle this behaviour on or off by sending a SIGUSR1 signal.
+We can also toggle disabling all outbound writes with a SIGUSR2 signal.
+
+To do this, just execute the following in a shell on the tilapia host:
+
+kill -s SIGUSR1 $(pidof tilapia)
