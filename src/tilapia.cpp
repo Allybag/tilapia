@@ -250,18 +250,21 @@ int main()
 
                         auto [nodeIt, inserted] = tcpNodes.try_emplace(tcpHeader.mDestinationPort, tcpHeader.mDestinationPort, tcpHeader.mSourcePort);
                         auto response = nodeIt->second.onMessage(tcpHeader, payload.size());
-                        if (response.has_value())
+                        if (response.mPrintPayload)
                         {
                             if (payload.size())
                             {
                                 std::print("{}", payload);
                             }
+                        }
 
+                        if (response.mSendAck)
+                        {
                             auto ethernetResponseHeader{ethernetHeader};
                             std::swap(ethernetResponseHeader.mSourceMacAddress, ethernetResponseHeader.mDestinationMacAddress);
 
                             auto ipResponseHeader{ipHeader};
-                            ipResponseHeader.mTotalLength = sizeof(ipResponseHeader) + sizeof(*response);
+                            ipResponseHeader.mTotalLength = sizeof(ipResponseHeader) + sizeof(response.mHeader);
                             std::swap(ipResponseHeader.mSourceAddress, ipResponseHeader.mDestinationAddress);
                             ipResponseHeader.mCheckSum = checksum(ipResponseHeader);
 
@@ -281,14 +284,14 @@ int main()
                             }
                             else
                             {
-                                TcpPseudoPacket pseudoPacket{pseudoHeader, *response};
-                                response->mCheckSum = checksum(pseudoPacket);
+                                TcpPseudoPacket pseudoPacket{pseudoHeader, response.mHeader};
+                                response.mHeader.mCheckSum = checksum(pseudoPacket);
                                 writeOffset += writeVnetHeader();
                             }
 
                             writeOffset += toWire(ethernetResponseHeader, writeBuffer + writeOffset);
                             writeOffset += toWire(ipResponseHeader, writeBuffer + writeOffset);
-                            writeOffset += toWire(*response, writeBuffer + writeOffset);
+                            writeOffset += toWire(response.mHeader, writeBuffer + writeOffset);
                         }
                     }
                     default:

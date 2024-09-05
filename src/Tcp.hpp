@@ -207,43 +207,96 @@ template <> struct std::formatter<TcpHeader> : SimpleFormatter
     }
 };
 
+struct TcpResponse
+{
+    TcpHeader mHeader{};
+    bool mSendAck{};
+    bool mPrintPayload{};
+};
+
 class TcpNode
 {
+    struct ControlBlock
+    {
+        SequenceNumber mLastSendSeqNum{8000};
+        SequenceNumber mLastRecvSeqNum{};
+        SequenceNumber mLastSendAckNum{};
+        SequenceNumber mLastRecvAckNum{};
+    };
+
 public:
     TcpNode(Port port, Port remotePort) : mPort{port}, mRemotePort{remotePort} { }
 
-    std::optional<TcpHeader> onMessage(const TcpHeader& header, std::size_t payload_size)
+    TcpResponse onMessage(const TcpHeader& header, std::size_t payload_size)
     {
         TcpHeader result{header};
         std::swap(result.mSourcePort, result.mDestinationPort);
-        result.mSequenceNumber = mSequenceNumber;
         result.mCheckSum = 0;
         result.setLength(5);
         result.mFlags.mValue = std::to_underlying(TcpFlag::Ack);
+
+        bool sendAck = shouldAck(header, payload_size);
+        bool printPayload = (header.mSequenceNumber != mControlBlock.mLastRecvSeqNum);
+        mControlBlock.mLastRecvAckNum = header.mAcknowledgementNumber;
+        mControlBlock.mLastRecvSeqNum = header.mSequenceNumber;
+
         result.mAcknowledgementNumber = header.mSequenceNumber + payload_size;
+        result.mSequenceNumber = header.mAcknowledgementNumber;
 
         if (header.mFlags.set(TcpFlag::Syn))
         {
             assert(payload_size == 0);
             result.mFlags = result.mFlags | TcpFlag::Syn;
-            result.mSequenceNumber = mSequenceNumber++;
+            result.mSequenceNumber = mControlBlock.mLastSendSeqNum++;
             result.mAcknowledgementNumber = header.mSequenceNumber + 1;
         }
 
-        if (mLastAcked == result.mAcknowledgementNumber)
+        if (sendAck)
         {
-            // Already acknowledged all received data
-            return std::nullopt;
+            mControlBlock.mLastSendAckNum = result.mAcknowledgementNumber;
+            mControlBlock.mLastSendSeqNum = result.mSequenceNumber;
         }
 
-        mLastAcked = result.mAcknowledgementNumber;
-        return result;
+        return {result, sendAck, printPayload};
     }
 
 private:
+    bool shouldAck(const TcpHeader& header, std::size_t payload_size)
+    {
+        if (header.mFlags.set(TcpFlag::Syn))
+        {
+            return true;
+        }
+
+        SequenceNumber expectedAckNum = header.mSequenceNumber + payload_size;
+        if (expectedAckNum > mControlBlock.mLastSendAckNum)
+        {
+            return true;
+        }
+
+#if 0
+        if (mControlBlock.mLastSendAckNum != mControlBlock.mLastRecvAckNum)
+        {
+            if (header.mAcknowledgementNumber == mControlBlock.mLastSendAckNum && payload_size == 0)
+            {
+                // Just an Ack 
+                assert(header.mFlags.set(TcpFlag::Ack));
+                return false;
+            }
+        }
+#endif
+
+        // Retry after ack not delivered
+        if (header.mSequenceNumber == mControlBlock.mLastRecvSeqNum && header.mSequenceNumber < mControlBlock.mLastSendAckNum)
+        {
+            return true;
+        }
+
+        return false;
+    }
+
     Port mPort;
     Port mRemotePort;
-    SequenceNumber mSequenceNumber{8000};
-    SequenceNumber mLastAcked{0};
+    ControlBlock mControlBlock{};
 };
 
