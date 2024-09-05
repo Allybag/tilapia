@@ -46,8 +46,8 @@ std::string print(const FrameSections& sections)
         {
             segment.append(": ");
             segment.append(section.payload);
-            // We don't want any newlines in our output
-            segment.erase(std::remove(segment.begin(), segment.end(), '\n'), segment.cend());
+            // Replace newlines with carats
+            std::replace(segment.begin(), segment.end(), '\n', '^');
         }
 
         int fill_count = section.size - segment.size();
