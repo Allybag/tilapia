@@ -10,9 +10,3 @@
 #define TUN_F_CSUM 0
 #define TUN_F_TSO4 0
 #define TUN_F_TSO6 0
-
-struct ifreq
-{
-    int ifr_flags;
-    char ifr_name[IFNAMSIZ];
-};

@@ -77,12 +77,16 @@ auto fromWire<TcpOption>(const char* buffer) -> TcpOption
     TcpOption result{};
 
     result.mType = *reinterpret_cast<const TcpOptionType*>(buffer);
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wswitch"
     switch (result.mType)
     {
         case TcpOptionType::EndOfOptions:
         case TcpOptionType::NoOp:
             return result;
+
     }
+#pragma clang diagnostic pop
 
     auto asSizedInt = [buffer]<typename SizeT>(std::int64_t offset = 2) {
         SizeT myNetworkByteOrderNum = *reinterpret_cast<const SizeT*>(buffer + offset);
@@ -116,6 +120,9 @@ auto fromWire<TcpOption>(const char* buffer) -> TcpOption
         case TcpOptionType::Authentication:
         case TcpOptionType::Multipath:
             std::println("Error: Received unsupported TCP Option: {}", std::to_underlying(result.mType));
+        case TcpOptionType::EndOfOptions:
+        case TcpOptionType::NoOp:
+            throw std::logic_error{"Bagah"};
     }
 
     return result;
@@ -127,12 +134,16 @@ std::size_t toWire(const TcpOption& option, char* buffer)
     char* writePointer{buffer};
     std::memcpy(writePointer, &option.mType, sizeof(option.mType));
     writePointer += sizeof(option.mType);
+
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wswitch"
     switch (option.mType)
     {
         case TcpOptionType::EndOfOptions:
         case TcpOptionType::NoOp:
             return writePointer - buffer;
     }
+#pragma clang diagnostic pop
 
     std::memcpy(writePointer, &option.mSize, sizeof(option.mSize));
     writePointer += sizeof(option.mSize);
@@ -167,6 +178,9 @@ std::size_t toWire(const TcpOption& option, char* buffer)
         case TcpOptionType::Authentication:
         case TcpOptionType::Multipath:
             std::println("Error: Received unsupported TCP Option: {}", std::to_underlying(option.mType));
+        case TcpOptionType::EndOfOptions:
+        case TcpOptionType::NoOp:
+            throw std::logic_error{"Bagah"};
     }
 
     throw std::runtime_error{std::format("Could not write TCP Option {}", option.mType)};
